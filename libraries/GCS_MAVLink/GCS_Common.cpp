@@ -1784,6 +1784,10 @@ void GCS_MAVLINK::send_vfr_hud()
  */
 MAV_RESULT GCS_MAVLINK::handle_preflight_reboot(const mavlink_command_long_t &packet, bool disable_overrides)
 {
+    if (hal.util->get_soft_armed()) {
+        // refuse reboot when armed
+        return MAV_RESULT_FAILED;
+    }
     if (is_equal(packet.param1,1.0f) || is_equal(packet.param1,3.0f)) {
         if (disable_overrides) {
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
