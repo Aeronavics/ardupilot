@@ -127,6 +127,9 @@ public:
     void led_out_sem_give();
     void led_out_send();
 
+    // send ArmingStatus
+    void arming_status_send();
+
     // output from do_cyclic
     void SRV_send_servos();
     void SRV_send_esc();
@@ -193,6 +196,8 @@ private:
         uint8_t devices_count;
         uint64_t last_update;
     } _led_conf;
+
+    uint32_t _arming_status_last_send_ms;
 
     AP_HAL::Semaphore *SRV_sem;
     AP_HAL::Semaphore *_led_out_sem;

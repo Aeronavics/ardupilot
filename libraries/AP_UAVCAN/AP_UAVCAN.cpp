@@ -32,6 +32,7 @@
 #include <uavcan/equipment/indication/LightsCommand.hpp>
 #include <uavcan/equipment/indication/SingleLightCommand.hpp>
 #include <uavcan/equipment/indication/RGB565.hpp>
+#include <uavcan/equipment/safety/ArmingStatus.hpp>
 
 #include <uavcan/equipment/power/BatteryInfo.hpp>
 
@@ -362,6 +363,7 @@ static void (*battery_info_st_cb_arr[2])(const uavcan::ReceivedDataStructure<uav
 static uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand>* act_out_array[MAX_NUMBER_OF_CAN_DRIVERS];
 static uavcan::Publisher<uavcan::equipment::esc::RawCommand>* esc_raw[MAX_NUMBER_OF_CAN_DRIVERS];
 static uavcan::Publisher<uavcan::equipment::indication::LightsCommand>* rgb_led[MAX_NUMBER_OF_CAN_DRIVERS];
+static uavcan::Publisher<uavcan::equipment::safety::ArmingStatus>* arming_status[MAX_NUMBER_OF_CAN_DRIVERS];
 
 AP_UAVCAN::AP_UAVCAN() :
     _node_allocator(
@@ -549,6 +551,10 @@ bool AP_UAVCAN::try_init(void)
     rgb_led[_uavcan_i]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
     rgb_led[_uavcan_i]->setPriority(uavcan::TransferPriority::OneHigherThanLowest);
 
+    arming_status[_uavcan_i] = new uavcan::Publisher<uavcan::equipment::safety::ArmingStatus>(*node);
+    arming_status[_uavcan_i]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
+    arming_status[_uavcan_i]->setPriority(uavcan::TransferPriority::OneHigherThanLowest);
+    
     _led_conf.devices_count = 0;
 
     /*
@@ -719,6 +725,7 @@ void AP_UAVCAN::do_cyclic(void)
         led_out_sem_give();
     }
 
+    arming_status_send();
 }
 
 bool AP_UAVCAN::led_out_sem_take()
@@ -751,6 +758,21 @@ void AP_UAVCAN::led_out_send()
 
         rgb_led[_uavcan_i]->broadcast(msg);
         _led_conf.last_update = AP_HAL::micros64();
+    }
+}
+
+void AP_UAVCAN::arming_status_send()
+{
+    uint32_t now = AP_HAL::millis();
+    if (now - _arming_status_last_send_ms > 1000) {
+        uavcan::equipment::safety::ArmingStatus msg;
+        if (hal.util->get_soft_armed()) {
+            msg.status = uavcan::equipment::safety::ArmingStatus::STATUS_FULLY_ARMED;
+        } else {
+            msg.status = uavcan::equipment::safety::ArmingStatus::STATUS_DISARMED;
+        }
+        arming_status[_uavcan_i]->broadcast(msg);
+        _arming_status_last_send_ms = now;
     }
 }
 
