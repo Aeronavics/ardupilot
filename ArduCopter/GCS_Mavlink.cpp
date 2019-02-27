@@ -980,7 +980,9 @@ void GCS_MAVLINK_Copter::handleMessage(mavlink_message_t* msg)
             break;
 
         case MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
-            if (is_equal(packet.param1,1.0f) || is_equal(packet.param1,3.0f)) {
+            if (hal.util->get_soft_armed()) {
+                result = MAV_RESULT_FAILED;
+            } else if (is_equal(packet.param1,1.0f) || is_equal(packet.param1,3.0f)) {
                 AP_Notify::flags.firmware_update = 1;
                 copter.notify.update();
                 hal.scheduler->delay(200);
