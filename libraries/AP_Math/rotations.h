@@ -66,6 +66,7 @@ enum Rotation : uint8_t {
     ROTATION_ROLL_90_PITCH_68_YAW_293 = 38,
     ROTATION_PITCH_315           = 39,
     ROTATION_ROLL_90_PITCH_315   = 40,
+    ROTATION_PITCH_7             = 41,
     ROTATION_MAX,
     ROTATION_CUSTOM              = 100,
 };
