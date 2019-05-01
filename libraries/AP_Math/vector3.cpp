@@ -245,7 +245,6 @@ void Vector3<T>::rotate(enum Rotation rotation)
         return;
     }
     case ROTATION_PITCH_7: {
-        const float pitch = radians(7);
         const float sin_pitch = 0.12186934340514748; // sinf(pitch);
         const float cos_pitch = 0.992546151641322; // cosf(pitch);
         float tmpx = x;
