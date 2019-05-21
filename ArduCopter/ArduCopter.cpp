@@ -136,7 +136,6 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK(landinggear_update,    10,     75),
     SCHED_TASK(lost_vehicle_check,    10,     50),
     SCHED_TASK_CLASS(GCS,                  (GCS*)&copter._gcs,          update_receive, 400, 180),
-    SCHED_TASK(gcs_send_heartbeat,     1,    110),
     SCHED_TASK_CLASS(GCS,                  (GCS*)&copter._gcs,          update_send,    400, 550),
 #if MOUNT == ENABLED
     SCHED_TASK_CLASS(AP_Mount,             &copter.camera_mount,        update,          50,  75),
@@ -305,15 +304,11 @@ void Copter::update_batt_compass(void)
     // read battery before compass because it may be used for motor interference compensation
     battery.read();
 
-    if(g.compass_enabled) {
+    if(AP::compass().enabled()) {
         // update compass with throttle value - used for compassmot
         compass.set_throttle(motors->get_throttle());
         compass.set_voltage(battery.voltage());
         compass.read();
-        // log compass information
-        if (should_log(MASK_LOG_COMPASS) && !ahrs.have_ekf_logging()) {
-            logger.Write_Compass();
-        }
     }
 }
 
@@ -341,7 +336,7 @@ void Copter::ten_hz_logging_loop()
     if (should_log(MASK_LOG_RCIN)) {
         logger.Write_RCIN();
         if (rssi.enabled()) {
-            logger.Write_RSSI(rssi);
+            logger.Write_RSSI();
         }
     }
     if (should_log(MASK_LOG_RCOUT)) {
@@ -422,7 +417,7 @@ void Copter::one_hz_loop()
 
     if (!motors->armed()) {
         // make it possible to change ahrs orientation at runtime during initial config
-        ahrs.set_orientation();
+        ahrs.update_orientation();
 
         update_using_interlock();
 
@@ -445,11 +440,13 @@ void Copter::one_hz_loop()
     adsb.set_is_flying(!ap.land_complete);
 #endif
 
+    AP_Notify::flags.flying = !ap.land_complete;
+
     // update error mask of sensors and subsystems. The mask uses the
     // MAV_SYS_STATUS_* values from mavlink. If a bit is set then it
     // indicates that the sensor or subsystem is present but not
     // functioning correctly
-    update_sensor_status_flags();
+    gcs().update_sensor_status_flags();
 
     // init compass location for declination
     init_compass_location();
@@ -490,7 +487,7 @@ void Copter::init_simple_bearing()
     super_simple_cos_yaw = simple_cos_yaw;
     super_simple_sin_yaw = simple_sin_yaw;
 
-    // log the simple bearing to dataflash
+    // log the simple bearing
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(DATA_INIT_SIMPLE_BEARING, ahrs.yaw_sensor);
     }
@@ -569,7 +566,6 @@ void Copter::update_altitude()
     // read in baro altitude
     read_barometer();
 
-    // write altitude info to dataflash logs
     if (should_log(MASK_LOG_CTUN)) {
         Log_Write_Control_Tuning();
     }

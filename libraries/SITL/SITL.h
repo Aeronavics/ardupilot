@@ -8,6 +8,7 @@
 #include "SIM_Gripper_Servo.h"
 #include "SIM_Gripper_EPM.h"
 #include "SIM_Parachute.h"
+#include "SIM_Precland.h"
 
 class AP_Logger;
 
@@ -174,6 +175,7 @@ public:
     AP_Float speedup; // simulation speedup
     AP_Int8  odom_enable; // enable visual odomotry data
     AP_Int8  telem_baudlimit_enable; // enable baudrate limiting on links
+    AP_Float flow_noise; // optical flow measurement noise (rad/sec)
 
     // wind control
     enum WindType {
@@ -228,7 +230,31 @@ public:
 
     // vibration frequencies in Hz on each axis
     AP_Vector3f vibe_freq;
-    
+
+    // gyro and accel fail masks
+    AP_Int8 gyro_fail_mask;
+    AP_Int8 accel_fail_mask;
+
+    struct {
+        AP_Float x;
+        AP_Float y;
+        AP_Float z;
+        AP_Int32 t;
+
+        uint32_t start_ms;
+    } shove;
+
+    struct {
+        AP_Float x;
+        AP_Float y;
+        AP_Float z;
+        AP_Int32 t;
+
+        uint32_t start_ms;
+    } twist;
+
+    AP_Int8 gnd_behav;
+
     uint16_t irlock_port;
 
     void simstate_send(mavlink_channel_t chan);
@@ -249,6 +275,7 @@ public:
     Gripper_EPM gripper_epm_sim;
 
     Parachute parachute_sim;
+    SIM_Precland precland_sim;
 };
 
 } // namespace SITL
