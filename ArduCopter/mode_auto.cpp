@@ -1108,7 +1108,7 @@ void Copter::ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
             case MAV_CMD_NAV_LAND:
             case MAV_CMD_NAV_SPLINE_WAYPOINT:
                 // if next command's lat, lon is specified then do not slowdown at this waypoint
-                if ((temp_cmd.content.location.lat != 0) && (temp_cmd.content.location.lng != 0)) {
+                if ((temp_cmd.content.location.lat != 0) || (temp_cmd.content.location.lng != 0)) {
                     fast_waypoint = true;
                 }
                 break;

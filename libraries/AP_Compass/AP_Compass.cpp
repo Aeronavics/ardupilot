@@ -34,7 +34,7 @@ extern AP_HAL::HAL& hal;
 #endif
 
 #ifndef AP_COMPASS_OFFSETS_MAX_DEFAULT
-#define AP_COMPASS_OFFSETS_MAX_DEFAULT 850
+#define AP_COMPASS_OFFSETS_MAX_DEFAULT 1250
 #endif
 
 #ifndef HAL_COMPASS_FILTER_DEFAULT
@@ -453,7 +453,28 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Description: When enabled this will automatically check the orientation of compasses on successful completion of compass calibration. If set to 2 then external compasses will have their orientation automatically corrected.
     // @Values: 0:Disabled,1:CheckOnly,2:CheckAndFix
     AP_GROUPINFO("AUTO_ROT", 35, Compass, _rotate_auto, HAL_COMPASS_AUTO_ROT_DEFAULT),
-    
+
+    // @Param: SCALE
+    // @DisplayName: Compass1 scale factor
+    // @Description: Scaling factor for first compass to compensate for sensor scaling errors. If this is 0 then no scaling is done
+    // @User: Standard
+    // @Range: 0 1.3
+    AP_GROUPINFO("SCALE", 40, Compass, _state[0].scale_factor, 0),
+
+    // @Param: SCALE2
+    // @DisplayName: Compass2 scale factor
+    // @Description: Scaling factor for 2nd compass to compensate for sensor scaling errors. If this is 0 then no scaling is done
+    // @User: Standard
+    // @Range: 0 1.3
+    AP_GROUPINFO("SCALE2", 41, Compass, _state[1].scale_factor, 0),
+
+    // @Param: SCALE3
+    // @DisplayName: Compass3 scale factor
+    // @Description: Scaling factor for 3rd compass to compensate for sensor scaling errors. If this is 0 then no scaling is done
+    // @User: Standard
+    // @Range: 0 1.3
+    AP_GROUPINFO("SCALE3", 42, Compass, _state[2].scale_factor, 0),
+
     AP_GROUPEND
 };
 
@@ -601,16 +622,14 @@ void Compass::_probe_external_i2c_compasses(void)
 #if !HAL_MINIMIZE_FEATURES
     // AK09916 on ICM20948
     FOREACH_I2C_EXTERNAL(i) {
-        ADD_BACKEND(DRIVER_ICM20948, AP_Compass_AK09916::probe_ICM20948(*this,
-                                                                        GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
+        ADD_BACKEND(DRIVER_ICM20948, AP_Compass_AK09916::probe_ICM20948(GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
                                                                         GET_I2C_DEVICE(i, HAL_COMPASS_ICM20948_I2C_ADDR),
                                                                         true, ROTATION_PITCH_180_YAW_90),
                     AP_Compass_AK09916::name, true);
     }
     
     FOREACH_I2C_INTERNAL(i) {
-        ADD_BACKEND(DRIVER_ICM20948, AP_Compass_AK09916::probe_ICM20948(*this,
-                                                                        GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
+        ADD_BACKEND(DRIVER_ICM20948, AP_Compass_AK09916::probe_ICM20948(GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
                                                                         GET_I2C_DEVICE(i, HAL_COMPASS_ICM20948_I2C_ADDR),
                                                                         both_i2c_external, ROTATION_PITCH_180_YAW_90),
                     AP_Compass_AK09916::name, true);
@@ -646,12 +665,12 @@ void Compass::_probe_external_i2c_compasses(void)
         
     // AK09916. This can be found twice, due to the ICM20948 i2c bus pass-thru, so we need to be careful to avoid that
     FOREACH_I2C_EXTERNAL(i) {
-        ADD_BACKEND(DRIVER_AK09916, AP_Compass_AK09916::probe(*this, GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
+        ADD_BACKEND(DRIVER_AK09916, AP_Compass_AK09916::probe(GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
                                                               true, ROTATION_YAW_270),
                     AP_Compass_AK09916::name, true);
     }
     FOREACH_I2C_INTERNAL(i) {
-        ADD_BACKEND(DRIVER_AK09916, AP_Compass_AK09916::probe(*this, GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
+        ADD_BACKEND(DRIVER_AK09916, AP_Compass_AK09916::probe(GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
                                                               both_i2c_external, both_i2c_external?ROTATION_YAW_270:ROTATION_NONE),
                     AP_Compass_AK09916::name, both_i2c_external);
     }
@@ -949,6 +968,8 @@ void Compass::_detect_backends(void)
 #elif HAL_COMPASS_DEFAULT == HAL_COMPASS_BMM150_I2C
     ADD_BACKEND(DRIVER_BMM150, AP_Compass_BMM150::probe(*this, GET_I2C_DEVICE(HAL_COMPASS_BMM150_I2C_BUS, HAL_COMPASS_BMM150_I2C_ADDR)),
                 AP_Compass_BMM150::name, true);
+#elif CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_CHIBIOS_MROCONTROLZEROF7
+    ADD_BACKEND(DRIVER_AK09916, AP_Compass_AK09916::probe_ICM20948(0, ROTATION_ROLL_180), AP_Compass_AK09916::name, false);
 #elif HAL_COMPASS_DEFAULT == HAL_COMPASS_NONE
     // no compass
 #else
@@ -1367,6 +1388,19 @@ bool Compass::consistent() const
         if (xy_len_diff > AP_COMPASS_MAX_XY_LENGTH_DIFF) {
             return false;
         }
+    }
+    return true;
+}
+
+/*
+  return true if we have a valid scale factor
+ */
+bool Compass::have_scale_factor(uint8_t i) const
+{
+    if (i >= get_count() ||
+        _state[i].scale_factor < COMPASS_MIN_SCALE_FACTOR ||
+        _state[i].scale_factor > COMPASS_MAX_SCALE_FACTOR) {
+        return false;
     }
     return true;
 }
