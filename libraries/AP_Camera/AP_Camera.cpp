@@ -1,4 +1,6 @@
 #include "AP_Camera.h"
+
+#include <AP_AHRS/AP_AHRS.h>
 #include <AP_Relay/AP_Relay.h>
 #include <AP_Math/AP_Math.h>
 #include <RC_Channel/RC_Channel.h>
@@ -123,6 +125,10 @@ AP_Camera::servo_pic()
 void
 AP_Camera::relay_pic()
 {
+    AP_Relay *_apm_relay = AP::relay();
+    if (_apm_relay == nullptr) {
+        return;
+    }
     if (_relay_on) {
         _apm_relay->on(0);
     } else {
@@ -164,13 +170,18 @@ AP_Camera::trigger_pic_cleanup()
         case AP_CAMERA_TRIGGER_TYPE_SERVO:
             SRV_Channels::set_output_pwm(SRV_Channel::k_cam_trigger, _servo_off_pwm);
             break;
-        case AP_CAMERA_TRIGGER_TYPE_RELAY:
+        case AP_CAMERA_TRIGGER_TYPE_RELAY: {
+            AP_Relay *_apm_relay = AP::relay();
+            if (_apm_relay == nullptr) {
+                break;
+            }
             if (_relay_on) {
                 _apm_relay->off(0);
             } else {
                 _apm_relay->on(0);
             }
             break;
+        }
         }
     }
 
@@ -187,10 +198,10 @@ AP_Camera::trigger_pic_cleanup()
 
 /// decode deprecated MavLink message that controls camera.
 void
-AP_Camera::control_msg(const mavlink_message_t* msg)
+AP_Camera::control_msg(const mavlink_message_t &msg)
 {
     __mavlink_digicam_control_t packet;
-    mavlink_msg_digicam_control_decode(msg, &packet);
+    mavlink_msg_digicam_control_decode(&msg, &packet);
 
     control(packet.session, packet.zoom_pos, packet.zoom_step, packet.focus_lock, packet.shot, packet.command_id);
 }
@@ -200,7 +211,6 @@ void AP_Camera::configure(float shooting_mode, float shutter_speed, float apertu
     // we cannot process the configure command so convert to mavlink message
     // and send to all components in case they and process it
 
-    mavlink_message_t msg;
     mavlink_command_long_t mav_cmd_long = {};
 
     // convert mission command to mavlink command_long
@@ -213,11 +223,8 @@ void AP_Camera::configure(float shooting_mode, float shutter_speed, float apertu
     mav_cmd_long.param6 = cmd_id;
     mav_cmd_long.param7 = engine_cutoff_time;
 
-    // Encode Command long into MAVLINK msg
-    mavlink_msg_command_long_encode(0, 0, &msg, &mav_cmd_long);
-
     // send to all components
-    GCS_MAVLINK::send_to_components(&msg);
+    GCS_MAVLINK::send_to_components(MAVLINK_MSG_ID_COMMAND_LONG, (char*)&mav_cmd_long, sizeof(mav_cmd_long));
 
     if (_type == AP_Camera::CAMERA_TYPE_BMMCC) {
         // Set a trigger for the additional functions that are flip controlled (so far just ISO and Record Start / Stop use this method, will add others if required)
@@ -250,7 +257,6 @@ void AP_Camera::control(float session, float zoom_pos, float zoom_step, float fo
         trigger_pic();
     }
 
-    mavlink_message_t msg;
     mavlink_command_long_t mav_cmd_long = {};
 
     // convert command to mavlink command long
@@ -262,11 +268,8 @@ void AP_Camera::control(float session, float zoom_pos, float zoom_step, float fo
     mav_cmd_long.param5 = shooting_cmd;
     mav_cmd_long.param6 = cmd_id;
 
-    // Encode Command long into MAVLINK msg
-    mavlink_msg_command_long_encode(0, 0, &msg, &mav_cmd_long);
-
     // send to all components
-    GCS_MAVLINK::send_to_components(&msg);
+    GCS_MAVLINK::send_to_components(MAVLINK_MSG_ID_COMMAND_LONG, (char*)&mav_cmd_long, sizeof(mav_cmd_long));
 }
 
 /*
@@ -274,6 +277,8 @@ void AP_Camera::control(float session, float zoom_pos, float zoom_step, float fo
  */
 void AP_Camera::send_feedback(mavlink_channel_t chan)
 {
+    const AP_AHRS &ahrs = AP::ahrs();
+
     float altitude, altitude_rel;
     if (current_loc.relative_alt) {
         altitude = current_loc.alt+ahrs.get_home().alt;
@@ -319,7 +324,7 @@ void AP_Camera::update()
         return;
     }
 
-    if (_max_roll > 0 && fabsf(ahrs.roll_sensor*1e-2f) > _max_roll) {
+    if (_max_roll > 0 && fabsf(AP::ahrs().roll_sensor*1e-2f) > _max_roll) {
         return;
     }
 
@@ -395,19 +400,22 @@ void AP_Camera::setup_feedback_callback(void)
 // log_picture - log picture taken and send feedback to GCS
 void AP_Camera::log_picture()
 {
+    if (!using_feedback_pin()) {
+        gcs().send_message(MSG_CAMERA_FEEDBACK);
+    }
+
     AP_Logger *logger = AP_Logger::get_singleton();
     if (logger == nullptr) {
         return;
     }
+    if (!logger->should_log(log_camera_bit)) {
+        return;
+    }
+
     if (!using_feedback_pin()) {
-        gcs().send_message(MSG_CAMERA_FEEDBACK);
-        if (logger->should_log(log_camera_bit)) {
-            logger->Write_Camera(ahrs, current_loc);
-        }
+        logger->Write_Camera(current_loc);
     } else {
-        if (logger->should_log(log_camera_bit)) {
-            logger->Write_Trigger(ahrs, current_loc);
-        }
+        logger->Write_Trigger(current_loc);
     }
 }
 
@@ -418,16 +426,12 @@ void AP_Camera::take_picture()
     trigger_pic();
 
     // tell all of our components to take a picture:
-    mavlink_command_long_t cmd_msg;
-    memset(&cmd_msg, 0, sizeof(cmd_msg));
+    mavlink_command_long_t cmd_msg {};
     cmd_msg.command = MAV_CMD_DO_DIGICAM_CONTROL;
     cmd_msg.param5 = 1;
-    // create message
-    mavlink_message_t msg;
-    mavlink_msg_command_long_encode(0, 0, &msg, &cmd_msg);
 
     // forward to all components
-    GCS_MAVLINK::send_to_components(&msg);
+    GCS_MAVLINK::send_to_components(MAVLINK_MSG_ID_COMMAND_LONG, (char*)&cmd_msg, sizeof(cmd_msg));
 }
 
 /*
@@ -447,7 +451,7 @@ void AP_Camera::update_trigger()
             if (logger->should_log(log_camera_bit)) {
                 uint32_t tdiff = AP_HAL::micros() - timestamp32;
                 uint64_t timestamp = AP_HAL::micros64();
-                logger->Write_Camera(ahrs, current_loc, timestamp - tdiff);
+                logger->Write_Camera(current_loc, timestamp - tdiff);
             }
         }
     }

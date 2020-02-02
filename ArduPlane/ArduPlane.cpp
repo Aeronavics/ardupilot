@@ -4,7 +4,7 @@
    Authors:    Doug Weibel, Jose Julio, Jordi Munoz, Jason Short, Randy Mackay, Pat Hickey, John Arne Birkeland, Olivier Adler, Amilcar Lucas, Gregory Fletcher, Paul Riseborough, Brandon Jones, Jon Challinger, Tom Pittenger
    Thanks to:  Chris Anderson, Michael Oborne, Paul Mather, Bill Premerlani, James Cohen, JB from rotorFX, Automatik, Fefenin, Peter Meister, Remzibi, Yury Smirnov, Sandro Benigno, Max Levine, Roberto Navoni, Lorenz Meier, Yury MonZon
 
-   Please contribute your ideas! See http://dev.ardupilot.org for details
+   Please contribute your ideas! See https://dev.ardupilot.org for details
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -93,7 +93,7 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_InertialSensor, &plane.ins, periodic, 50, 50),
     SCHED_TASK(avoidance_adsb_update,  10,    100),
     SCHED_TASK_CLASS(RC_Channels,       (RC_Channels*)&plane.g2.rc_channels, read_aux_all,           10,    200),
-    SCHED_TASK_CLASS(AP_Button, &plane.g2.button, update, 5, 100),
+    SCHED_TASK_CLASS(AP_Button, &plane.button, update, 5, 100),
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats, &plane.g2.stats, update, 1, 100),
 #endif
@@ -106,22 +106,22 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
 #if LANDING_GEAR_ENABLED == ENABLED
     SCHED_TASK(landing_gear_update, 5, 50),
 #endif
+#if EFI_ENABLED
+    SCHED_TASK(efi_update,             10,    200),
+#endif
+    SCHED_TASK(update_dynamic_notch,   50,    200),
 };
 
-constexpr int8_t Plane::_failsafe_priorities[7];
-
-void Plane::setup() 
+void Plane::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
+                                uint8_t &task_count,
+                                uint32_t &log_bit)
 {
-    // load the default values of variables listed in var_info[]
-    AP_Param::setup_sketch_defaults();
-
-    rssi.init();
-
-    init_ardupilot();
-
-    // initialise the main loop scheduler
-    scheduler.init(&scheduler_tasks[0], ARRAY_SIZE(scheduler_tasks), MASK_LOG_PM);
+    tasks = &scheduler_tasks[0];
+    task_count = ARRAY_SIZE(scheduler_tasks);
+    log_bit = MASK_LOG_PM;
 }
+
+constexpr int8_t Plane::_failsafe_priorities[7];
 
 void Plane::loop()
 {
@@ -129,17 +129,10 @@ void Plane::loop()
     G_Dt = scheduler.get_loop_period_s();
 }
 
-void Plane::update_soft_armed()
-{
-    hal.util->set_soft_armed(arming.is_armed() &&
-                             hal.util->safety_switch_state() != AP_HAL::Util::SAFETY_DISARMED);
-    logger.set_vehicle_armed(hal.util->get_soft_armed());
-}
-
 // update AHRS system
 void Plane::ahrs_update()
 {
-    update_soft_armed();
+    arming.update_soft_armed();
 
 #if HIL_SUPPORT
     if (g.hil_mode == 1) {
@@ -173,7 +166,7 @@ void Plane::ahrs_update()
     quadplane.check_yaw_reset();
 
     // update inertial_nav for quadplane
-    quadplane.inertial_nav.update(G_Dt);
+    quadplane.inertial_nav.update();
 }
 
 /*
@@ -298,12 +291,6 @@ void Plane::one_second_loop()
             // reset the landing altitude correction
             landing.alt_offset = 0;
     }
-    
-    // update error mask of sensors and subsystems. The mask uses the
-    // MAV_SYS_STATUS_* values from mavlink. If a bit is set then it
-    // indicates that the sensor or subsystem is present but not
-    // functioning correctly
-    gcs().update_sensor_status_flags();
 }
 
 void Plane::compass_save()
@@ -316,6 +303,13 @@ void Plane::compass_save()
          */
         compass.save_offsets();
     }
+}
+
+void Plane::efi_update(void)
+{
+#if EFI_ENABLED
+    g2.efi.update();
+#endif
 }
 
 /*
@@ -386,11 +380,6 @@ void Plane::update_GPS_10Hz(void)
 
                 next_WP_loc = prev_WP_loc = home;
 
-                if (AP::compass().enabled()) {
-                    // Set compass declination automatically
-                    const Location &loc = gps.location();
-                    compass.set_initial_location(loc.lat, loc.lng);
-                }
                 ground_start_count = 0;
             }
         }
@@ -471,7 +460,7 @@ void Plane::update_navigation()
               are within the maximum of the stopping distance and the
               RTL_RADIUS
              */
-            set_mode(mode_qrtl, MODE_REASON_UNKNOWN);
+            set_mode(mode_qrtl, ModeReason::UNKNOWN);
             break;
         } else if (g.rtl_autoland == 1 &&
             !auto_state.checked_for_autoland &&
@@ -480,7 +469,7 @@ void Plane::update_navigation()
             // we've reached the RTL point, see if we have a landing sequence
             if (mission.jump_to_landing_sequence()) {
                 // switch from RTL -> AUTO
-                set_mode(mode_auto, MODE_REASON_UNKNOWN);
+                set_mode(mode_auto, ModeReason::UNKNOWN);
             }
 
             // prevent running the expensive jump_to_landing_sequence
@@ -492,7 +481,7 @@ void Plane::update_navigation()
             // Go directly to the landing sequence
             if (mission.jump_to_landing_sequence()) {
                 // switch from RTL -> AUTO
-                set_mode(mode_auto, MODE_REASON_UNKNOWN);
+                set_mode(mode_auto, ModeReason::UNKNOWN);
             }
 
             // prevent running the expensive jump_to_landing_sequence
@@ -509,6 +498,7 @@ void Plane::update_navigation()
     case Mode::Number::LOITER:
     case Mode::Number::AVOID_ADSB:
     case Mode::Number::GUIDED:
+    case Mode::Number::TAKEOFF:
         update_loiter(radius);
         break;
 
@@ -550,7 +540,7 @@ void Plane::set_flight_stage(AP_Vehicle::FixedWing::FlightStage fs)
 
     if (fs == AP_Vehicle::FixedWing::FLIGHT_ABORT_LAND) {
         gcs().send_text(MAV_SEVERITY_NOTICE, "Landing aborted, climbing to %dm",
-                          auto_state.takeoff_altitude_rel_cm/100);
+                        int(auto_state.takeoff_altitude_rel_cm/100));
     }
 
     flight_stage = fs;
@@ -635,7 +625,7 @@ void Plane::update_flight_stage(void)
             } else {
                 set_flight_stage(AP_Vehicle::FixedWing::FLIGHT_NORMAL);
             }
-        } else {
+        } else if (control_mode != &mode_takeoff) {
             // If not in AUTO then assume normal operation for normal TECS operation.
             // This prevents TECS from being stuck in the wrong stage if you switch from
             // AUTO to, say, FBWB during a landing, an aborted landing or takeoff.
@@ -647,9 +637,6 @@ void Plane::update_flight_stage(void)
     } else {
         set_flight_stage(AP_Vehicle::FixedWing::FLIGHT_NORMAL);
     }
-
-    // tell AHRS the airspeed to true airspeed ratio
-    airspeed.set_EAS2TAS(barometer.get_EAS2TAS());
 }
 
 
@@ -668,7 +655,7 @@ void Plane::disarm_if_autoland_complete()
         arming.is_armed()) {
         /* we have auto disarm enabled. See if enough time has passed */
         if (millis() - auto_state.last_flying_ms >= landing.get_disarm_delay()*1000UL) {
-            if (disarm_motors()) {
+            if (arming.disarm()) {
                 gcs().send_text(MAV_SEVERITY_INFO,"Auto disarmed");
             }
         }

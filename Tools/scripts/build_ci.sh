@@ -35,16 +35,28 @@ echo "Targets: $CI_BUILD_TARGET"
 echo "Compiler: $c_compiler"
 
 pymavlink_installed=0
+mavproxy_installed=0
 
 function run_autotest() {
     NAME="$1"
     BVEHICLE="$2"
     RVEHICLE="$3"
 
+    if [ $mavproxy_installed -eq 0 ]; then
+        echo "Installing MAVProxy"
+        pushd /tmp
+          git clone --recursive https://github.com/ardupilot/MAVProxy
+          pushd MAVProxy
+            python setup.py build install --user --force
+          popd
+        popd
+        mavproxy_installed=1
+        # now uninstall the version of pymavlink pulled in by MAVProxy deps:
+        pip uninstall -y pymavlink
+    fi
     if [ $pymavlink_installed -eq 0 ]; then
         echo "Installing pymavlink"
-        git submodule init
-        git submodule update
+        git submodule update --init --recursive
         (cd modules/mavlink/pymavlink && python setup.py build install --user)
         pymavlink_installed=1
     fi
@@ -58,7 +70,10 @@ function run_autotest() {
     if [ $NAME == "Rover" ]; then
         w="$w --enable-math-check-indexes"
     fi
-    Tools/autotest/autotest.py --waf-configure-args="$w" "$BVEHICLE" "$RVEHICLE"
+    if [ "x$CI_BUILD_DEBUG" != "x" ]; then
+        w="$w --debug"
+    fi
+    Tools/autotest/autotest.py --show-test-timings --waf-configure-args="$w" "$BVEHICLE" "$RVEHICLE"
     ccache -s && ccache -z
 }
 
@@ -80,22 +95,51 @@ for t in $CI_BUILD_TARGET; do
         run_autotest "Rover" "build.APMrover2" "drive.APMrover2"
         continue
     fi
+    if [ "$t" == "sitltest-balancebot" ]; then
+        run_autotest "BalanceBot" "build.APMrover2" "drive.BalanceBot"
+        continue
+    fi
     if [ "$t" == "sitltest-sub" ]; then
         run_autotest "Sub" "build.ArduSub" "dive.ArduSub"
         continue
     fi
 
-    if [ "$t" == "sitl-scripting" ]; then
-        echo "Building scripting"
-        $waf configure --enable-scripting
-        $waf clean
-        $waf all
+    if [ "$t" == "unit-tests" ]; then
+        run_autotest "Unit Tests" "build.unit_tests" "run.unit_tests"
         continue
     fi
 
     if [ "$t" == "revo-bootloader" ]; then
         echo "Building revo bootloader"
         $waf configure --board revo-mini --bootloader
+        $waf clean
+        $waf bootloader
+        continue
+    fi
+
+    if [ "$t" == "periph-build" ]; then
+        echo "Building f103 bootloader"
+        $waf configure --board f103-GPS --bootloader
+        $waf clean
+        $waf bootloader
+        echo "Building f103 peripheral fw"
+        $waf configure --board f103-GPS
+        $waf clean
+        $waf AP_Periph
+        echo "Building f303 bootloader"
+        $waf configure --board f303-Universal --bootloader
+        $waf clean
+        $waf bootloader
+        echo "Building f303 peripheral fw"
+        $waf configure --board f303-Universal
+        $waf clean
+        $waf AP_Periph
+        continue
+    fi
+    
+    if [ "$t" == "CubeOrange-bootloader" ]; then
+        echo "Building CubeOrange bootloader"
+        $waf configure --board CubeOrange --bootloader
         $waf clean
         $waf bootloader
         continue
@@ -110,8 +154,8 @@ for t in $CI_BUILD_TARGET; do
     fi
 
     if [ "$t" == "stm32h7" ]; then
-        echo "Building Pixhawk6"
-        $waf configure --board Pixhawk6
+        echo "Building Durandal"
+        $waf configure --board Durandal
         $waf clean
         $waf copter
         continue
@@ -156,11 +200,11 @@ for t in $CI_BUILD_TARGET; do
     fi
 done
 
-python Tools/autotest/param_metadata/param_parse.py --no-emit --vehicle APMrover2
-python Tools/autotest/param_metadata/param_parse.py --no-emit --vehicle AntennaTracker
-python Tools/autotest/param_metadata/param_parse.py --no-emit --vehicle ArduCopter
-python Tools/autotest/param_metadata/param_parse.py --no-emit --vehicle ArduPlane
-python Tools/autotest/param_metadata/param_parse.py --no-emit --vehicle ArduSub
+python Tools/autotest/param_metadata/param_parse.py --vehicle APMrover2
+python Tools/autotest/param_metadata/param_parse.py --vehicle AntennaTracker
+python Tools/autotest/param_metadata/param_parse.py --vehicle ArduCopter
+python Tools/autotest/param_metadata/param_parse.py --vehicle ArduPlane
+python Tools/autotest/param_metadata/param_parse.py --vehicle ArduSub
 
 echo build OK
 exit 0

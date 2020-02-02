@@ -75,9 +75,7 @@ AP_RangeFinder_Backend *AP_RangeFinder_MaxsonarI2CXL::detect(RangeFinder::RangeF
  */
 bool AP_RangeFinder_MaxsonarI2CXL::_init(void)
 {
-    if (!_dev->get_semaphore()->take(HAL_SEMAPHORE_BLOCK_FOREVER)) {
-        return false;
-    }
+    _dev->get_semaphore()->take_blocking();
 
     if (!start_reading()) {
         _dev->get_semaphore()->give();
@@ -155,6 +153,6 @@ void AP_RangeFinder_MaxsonarI2CXL::update(void)
         update_status();
     } else if (AP_HAL::millis() - state.last_reading_ms > 300) {
         // if no updates for 0.3 seconds set no-data
-        set_status(RangeFinder::RangeFinder_NoData);
+        set_status(RangeFinder::Status::NoData);
     }
 }

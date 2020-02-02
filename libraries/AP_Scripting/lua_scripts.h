@@ -18,6 +18,7 @@
 #include <AP_Param/AP_Param.h>
 #include <setjmp.h>
 
+#include <AP_Filesystem/posix_compat.h>
 #include "lua_bindings.h"
 
 class lua_scripts
@@ -28,6 +29,9 @@ public:
     /* Do not allow copies */
     lua_scripts(const lua_scripts &other) = delete;
     lua_scripts &operator=(const lua_scripts&) = delete;
+
+    // return true if initialisation failed
+    bool heap_allocated() const { return _heap != nullptr; }
 
     // run scripts, does not return unless an error occured
     void run(void);

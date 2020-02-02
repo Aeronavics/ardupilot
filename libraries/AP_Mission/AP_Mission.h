@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AP_HAL/AP_HAL.h>
-#include <AP_Vehicle/AP_Vehicle.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Common/AP_Common.h>
@@ -474,7 +473,7 @@ public:
 
     // get a reference to the AP_Mission semaphore, allowing an external caller to lock the
     // storage while working with multiple waypoints
-    HAL_Semaphore_Recursive &get_semaphore(void) {
+    HAL_Semaphore &get_semaphore(void) {
         return _rsem;
     }
 
@@ -580,7 +579,7 @@ private:
 
     // multi-thread support. This is static so it can be used from
     // const functions
-    static HAL_Semaphore_Recursive _rsem;
+    static HAL_Semaphore _rsem;
 
     // mission items common to all vehicles:
     bool start_command_do_gripper(const AP_Mission::Mission_Command& cmd);

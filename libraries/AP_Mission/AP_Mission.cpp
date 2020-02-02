@@ -14,7 +14,8 @@ const AP_Param::GroupInfo AP_Mission::var_info[] = {
     // @Range: 0 32766
     // @Increment: 1
     // @User: Advanced
-    AP_GROUPINFO("TOTAL",  0, AP_Mission, _cmd_total, 0),
+    // @ReadOnly: True
+    AP_GROUPINFO_FLAGS("TOTAL",  0, AP_Mission, _cmd_total, 0, AP_PARAM_FLAG_INTERNAL_USE_ONLY),
 
     // @Param: RESTART
     // @DisplayName: Mission Restart when entering Auto mode
@@ -38,7 +39,7 @@ extern const AP_HAL::HAL& hal;
 // storage object
 StorageAccess AP_Mission::_storage(StorageManager::StorageMission);
 
-HAL_Semaphore_Recursive AP_Mission::_rsem;
+HAL_Semaphore AP_Mission::_rsem;
 
 ///
 /// public mission methods
@@ -505,57 +506,65 @@ bool AP_Mission::read_cmd_from_storage(uint16_t index, Mission_Command& cmd) con
 {
     WITH_SEMAPHORE(_rsem);
 
-    // exit immediately if index is beyond last command but we always let cmd #0 (i.e. home) be read
-    if (index >= (unsigned)_cmd_total && index != 0) {
-        return false;
-    }
-
     // special handling for command #0 which is home
     if (index == 0) {
         cmd.index = 0;
         cmd.id = MAV_CMD_NAV_WAYPOINT;
         cmd.p1 = 0;
         cmd.content.location = AP::ahrs().get_home();
-    }else{
-        // Find out proper location in memory by using the start_byte position + the index
-        // we can load a command, we don't process it yet
-        // read WP position
-        uint16_t pos_in_storage = 4 + (index * AP_MISSION_EEPROM_COMMAND_SIZE);
-
-        PackedContent packed_content;
-
-        uint8_t b1 = _storage.read_byte(pos_in_storage);
-        if (b1 == 0) {
-            cmd.id = _storage.read_uint16(pos_in_storage+1);
-            cmd.p1 = _storage.read_uint16(pos_in_storage+3);
-            _storage.read_block(packed_content.bytes, pos_in_storage+5, 10);
-        } else {
-            cmd.id = b1;
-            cmd.p1 = _storage.read_uint16(pos_in_storage+1);
-            _storage.read_block(packed_content.bytes, pos_in_storage+3, 12);
-        }
-
-        if (stored_in_location(cmd.id)) {
-            // Location is not PACKED; field-wise copy it:
-            cmd.content.location.relative_alt = packed_content.location.flags.relative_alt;
-            cmd.content.location.loiter_ccw = packed_content.location.flags.loiter_ccw;
-            cmd.content.location.terrain_alt = packed_content.location.flags.terrain_alt;
-            cmd.content.location.origin_alt = packed_content.location.flags.origin_alt;
-            cmd.content.location.loiter_xtrack = packed_content.location.flags.loiter_xtrack;
-            cmd.content.location.alt = packed_content.location.alt;
-            cmd.content.location.lat = packed_content.location.lat;
-            cmd.content.location.lng = packed_content.location.lng;
-        } else {
-            // all other options in Content are assumed to be packed:
-            static_assert(sizeof(cmd.content) >= 12,
-                          "content is big enough to take bytes");
-            // (void *) cast to specify gcc that we know that we are copy byte into a non trivial type and leaving 4 bytes untouched
-            memcpy((void *)&cmd.content, packed_content.bytes, 12);
-        }
-
-        // set command's index to it's position in eeprom
-        cmd.index = index;
+        return true;
     }
+
+    if (index >= (unsigned)_cmd_total) {
+        return false;
+    }
+
+    // Find out proper location in memory by using the start_byte position + the index
+    // we can load a command, we don't process it yet
+    // read WP position
+    const uint16_t pos_in_storage = 4 + (index * AP_MISSION_EEPROM_COMMAND_SIZE);
+
+    PackedContent packed_content {};
+
+    const uint8_t b1 = _storage.read_byte(pos_in_storage);
+    if (b1 == 0) {
+        cmd.id = _storage.read_uint16(pos_in_storage+1);
+        cmd.p1 = _storage.read_uint16(pos_in_storage+3);
+        _storage.read_block(packed_content.bytes, pos_in_storage+5, 10);
+    } else {
+        cmd.id = b1;
+        cmd.p1 = _storage.read_uint16(pos_in_storage+1);
+        _storage.read_block(packed_content.bytes, pos_in_storage+3, 12);
+    }
+
+    if (stored_in_location(cmd.id)) {
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+        // NOTE!  no 16-bit command may be stored_in_location as only
+        // 10 bytes are available for storage and lat/lon/alt required
+        // 4*sizeof(float) == 12 bytes of storage.
+        if (b1 == 0) {
+            AP_HAL::panic("May not store location for 16-bit commands");
+        }
+#endif
+        // Location is not PACKED; field-wise copy it:
+        cmd.content.location.relative_alt = packed_content.location.flags.relative_alt;
+        cmd.content.location.loiter_ccw = packed_content.location.flags.loiter_ccw;
+        cmd.content.location.terrain_alt = packed_content.location.flags.terrain_alt;
+        cmd.content.location.origin_alt = packed_content.location.flags.origin_alt;
+        cmd.content.location.loiter_xtrack = packed_content.location.flags.loiter_xtrack;
+        cmd.content.location.alt = packed_content.location.alt;
+        cmd.content.location.lat = packed_content.location.lat;
+        cmd.content.location.lng = packed_content.location.lng;
+    } else {
+        // all other options in Content are assumed to be packed:
+        static_assert(sizeof(cmd.content) >= 12,
+                      "content is big enough to take bytes");
+        // (void *) cast to specify gcc that we know that we are copy byte into a non trivial type and leaving 4 bytes untouched
+        memcpy((void *)&cmd.content, packed_content.bytes, 12);
+    }
+
+    // set command's index to it's position in eeprom
+    cmd.index = index;
 
     // return success
     return true;
@@ -599,7 +608,7 @@ bool AP_Mission::write_cmd_to_storage(uint16_t index, const Mission_Command& cmd
         return false;
     }
 
-    PackedContent packed;
+    PackedContent packed {};
     if (stored_in_location(cmd.id)) {
         // Location is not PACKED; field-wise copy it:
         packed.location.flags.relative_alt = cmd.content.location.relative_alt;
@@ -790,7 +799,7 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         cmd.p1 = packet.param1;                         // on/off. >0.5 means "on", hand-over control to external controller
         break;
 
-    case MAV_CMD_NAV_DELAY:                            // MAV ID: 94
+    case MAV_CMD_NAV_DELAY:                            // MAV ID: 93
         cmd.content.nav_delay.seconds = packet.param1; // delay in seconds
         cmd.content.nav_delay.hour_utc = packet.param2;// absolute time's hour (utc)
         cmd.content.nav_delay.min_utc = packet.param3;// absolute time's min (utc)
@@ -992,15 +1001,18 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
 
         case MAV_FRAME_MISSION:
         case MAV_FRAME_GLOBAL:
+        case MAV_FRAME_GLOBAL_INT:
             cmd.content.location.relative_alt = 0;
             break;
 
         case MAV_FRAME_GLOBAL_RELATIVE_ALT:
+        case MAV_FRAME_GLOBAL_RELATIVE_ALT_INT:
             cmd.content.location.relative_alt = 1;
             break;
 
 #if AP_TERRAIN_AVAILABLE
         case MAV_FRAME_GLOBAL_TERRAIN_ALT:
+        case MAV_FRAME_GLOBAL_TERRAIN_ALT_INT:
             // we mark it as a relative altitude, as it doesn't have
             // home alt added
             cmd.content.location.relative_alt = 1;
@@ -1222,7 +1234,7 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
         packet.param1 = cmd.p1;                         // on/off. >0.5 means "on", hand-over control to external controller
         break;
 
-    case MAV_CMD_NAV_DELAY:                            // MAV ID: 94
+    case MAV_CMD_NAV_DELAY:                            // MAV ID: 93
         packet.param1 = cmd.content.nav_delay.seconds; // delay in seconds
         packet.param2 = cmd.content.nav_delay.hour_utc; // absolute time's day of week (utc)
         packet.param3 = cmd.content.nav_delay.min_utc; // absolute time's hour (utc)
@@ -1936,6 +1948,8 @@ const char *AP_Mission::Mission_Command::type() const {
         return "PayloadPlace";
     case MAV_CMD_DO_PARACHUTE:
         return "Parachute";
+    case MAV_CMD_DO_MOUNT_CONTROL:
+        return "MountControl";
 
     default:
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL

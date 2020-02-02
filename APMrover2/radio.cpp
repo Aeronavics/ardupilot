@@ -13,7 +13,12 @@ void Rover::set_control_channels(void)
     // set rc channel ranges
     channel_steer->set_angle(SERVO_MAX);
     channel_throttle->set_angle(100);
-    channel_lateral->set_angle(100);
+    if (channel_lateral != nullptr) {
+        channel_lateral->set_angle(100);
+    }
+
+    // sailboat rc input init
+    g2.sailboat.init_rc_in();
 
     // Allow to reconfigure output when not armed
     if (!arming.is_armed()) {
@@ -21,7 +26,7 @@ void Rover::set_control_channels(void)
         // For a rover safety is TRIM throttle
         g2.motors.setup_safety_output();
     }
-    // setup correct scaling for ESCs like the UAVCAN PX4ESC which
+    // setup correct scaling for ESCs like the UAVCAN ESCs which
     // take a proportion of speed. Default to 1000 to 2000 for systems without
     // a k_throttle output
     hal.rcout->set_esc_scaling(1000, 2000);
@@ -33,7 +38,9 @@ void Rover::init_rc_in()
     // set rc dead zones
     channel_steer->set_default_dead_zone(30);
     channel_throttle->set_default_dead_zone(30);
-    channel_lateral->set_default_dead_zone(30);
+    if (channel_lateral != nullptr) {
+        channel_lateral->set_default_dead_zone(30);
+    }
 }
 
 /*
@@ -72,7 +79,7 @@ void Rover::rudder_arm_disarm_check()
                 }
             } else {
                 // time to arm!
-                arm_motors(AP_Arming::Method::RUDDER);
+                arming.arm(AP_Arming::Method::RUDDER);
                 rudder_arm_timer = 0;
             }
         } else {
@@ -91,7 +98,7 @@ void Rover::rudder_arm_disarm_check()
                 }
             } else {
                 // time to disarm!
-                disarm_motors();
+                arming.disarm();
                 rudder_arm_timer = 0;
             }
         } else {

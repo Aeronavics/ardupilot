@@ -4,11 +4,17 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Param/AP_Param.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
-#include <AP_Baro/AP_Baro.h>
+#include <AP_Math/AP_Math.h>
 
 class AP_Airspeed_Backend;
 
+#ifndef AIRSPEED_MAX_SENSORS
 #define AIRSPEED_MAX_SENSORS 2
+#endif
+
+#ifndef AP_AIRSPEED_AUTOCAL_ENABLE
+#define AP_AIRSPEED_AUTOCAL_ENABLE !defined(HAL_BUILD_AP_PERIPH)
+#endif
 
 class Airspeed_Calibration {
 public:
@@ -101,24 +107,16 @@ public:
     }
     float get_differential_pressure(void) const { return get_differential_pressure(primary); }
 
-    // set the apparent to true airspeed ratio
-    void set_EAS2TAS(uint8_t i, float v) {
-        state[i].EAS2TAS = v;
-    }
-    void set_EAS2TAS(float v) { set_EAS2TAS(primary, v); }
-
-    // get the apparent to true airspeed ratio
-    float get_EAS2TAS(uint8_t i) const {
-        return state[i].EAS2TAS;
-    }
-    float get_EAS2TAS(void) const { return get_EAS2TAS(primary); }
-
     // update airspeed ratio calibration
     void update_calibration(const Vector3f &vground, int16_t max_airspeed_allowed_during_cal);
 
     // return health status of sensor
     bool healthy(uint8_t i) const {
-        return state[i].healthy && (fabsf(param[i].offset) > 0 || state[i].use_zero_offset) && enabled(i);
+        bool ok = state[i].healthy && enabled(i);
+#ifndef HAL_BUILD_AP_PERIPH
+        ok &= (fabsf(param[i].offset) > 0 || state[i].use_zero_offset);
+#endif
+        return ok;
     }
     bool healthy(void) const { return healthy(primary); }
 
@@ -152,8 +150,9 @@ public:
         TYPE_I2C_MS5525_ADDRESS_1=4,
         TYPE_I2C_MS5525_ADDRESS_2=5,
         TYPE_I2C_SDP3X=6,
-        TYPE_I2C_DLVR=7,
+        TYPE_I2C_DLVR_5IN=7,
         TYPE_UAVCAN=8,
+        TYPE_I2C_DLVR_10IN=9,
     };
 
     // get current primary sensor
@@ -186,13 +185,12 @@ private:
         float	last_pressure;
         float   filtered_pressure;
         float	corrected_pressure;
-        float   EAS2TAS;
         bool	healthy:1;
         bool	hil_set:1;
         float   hil_pressure;
         uint32_t last_update_ms;
         bool use_zero_offset;
-        
+
         // state of runtime calibration
         struct {
             uint32_t start_ms;
@@ -201,9 +199,11 @@ private:
             uint16_t read_count;
         } cal;
 
+#if AP_AIRSPEED_AUTOCAL_ENABLE
         Airspeed_Calibration calibration;
         float last_saved_ratio;
         uint8_t counter;
+#endif // AP_AIRSPEED_AUTOCAL_ENABLE
 
         struct {
             uint32_t last_check_ms;

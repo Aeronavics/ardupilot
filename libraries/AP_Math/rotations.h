@@ -66,6 +66,7 @@ enum Rotation : uint8_t {
     ROTATION_ROLL_90_PITCH_68_YAW_293 = 38,
     ROTATION_PITCH_315           = 39,
     ROTATION_ROLL_90_PITCH_315   = 40,
+    ROTATION_PITCH_7             = 41,
     ///////////////////////////////////////////////////////////////////////
     // Do not add more rotations without checking that there is not a conflict
     // with the MAVLink spec. MAV_SENSOR_ORIENTATION is expected to match our
@@ -75,6 +76,10 @@ enum Rotation : uint8_t {
     ROTATION_MAX,
     ROTATION_CUSTOM              = 100,
 };
+
+// maximum rotation that will be used for auto-detection
+#define ROTATION_MAX_AUTO_ROTATION ROTATION_ROLL_90_PITCH_315
+
 /*
 Here are the same values in a form sutable for a @Values attribute in
 auto documentation:

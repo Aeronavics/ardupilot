@@ -24,7 +24,7 @@ void Plane::update_is_flying_5Hz(void)
 
     // airspeed at least 75% of stall speed?
     const float airspeed_threshold = MAX(aparm.airspeed_min,2)*0.75f;
-    bool airspeed_movement = ahrs.airspeed_estimate(&aspeed) && (aspeed >= airspeed_threshold);
+    bool airspeed_movement = ahrs.airspeed_estimate(aspeed) && (aspeed >= airspeed_threshold);
 
     if (gps.status() < AP_GPS::GPS_OK_FIX_2D && arming.is_armed() && !airspeed_movement && isFlyingProbability > 0.3) {
         // when flying with no GPS, use the last airspeed estimate to
@@ -168,7 +168,7 @@ void Plane::update_is_flying_5Hz(void)
     Log_Write_Status();
 
     // tell AHRS flying state
-    ahrs.set_likely_flying(new_is_flying);
+    set_likely_flying(new_is_flying);
 }
 
 /*
@@ -305,7 +305,7 @@ void Plane::crash_detection_update(void)
         }
         else {
             if (aparm.crash_detection_enable & CRASH_DETECT_ACTION_BITMASK_DISARM) {
-                disarm_motors();
+                arming.disarm();
             }
             if (crashed_near_land_waypoint) {
                 gcs().send_text(MAV_SEVERITY_CRITICAL, "Hard landing detected");
@@ -319,12 +319,14 @@ void Plane::crash_detection_update(void)
 /*
  * return true if we are in a pre-launch phase of an auto-launch, typically used in bungee launches
  */
-bool Plane::in_preLaunch_flight_stage(void) {
+bool Plane::in_preLaunch_flight_stage(void)
+{
+    if (control_mode == &mode_takeoff && throttle_suppressed) {
+        return true;
+    }
     return (control_mode == &mode_auto &&
             throttle_suppressed &&
             flight_stage == AP_Vehicle::FixedWing::FLIGHT_NORMAL &&
             mission.get_current_nav_cmd().id == MAV_CMD_NAV_TAKEOFF &&
             !quadplane.is_vtol_takeoff(mission.get_current_nav_cmd().id));
 }
-
-

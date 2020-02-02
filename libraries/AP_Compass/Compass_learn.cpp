@@ -9,6 +9,9 @@
 #include <GCS_MAVLink/GCS.h>
 
 #include <stdio.h>
+#include <AP_Vehicle/AP_Vehicle.h>
+
+#if COMPASS_LEARN_ENABLED
 
 extern const AP_HAL::HAL &hal;
 
@@ -17,6 +20,13 @@ CompassLearn::CompassLearn(Compass &_compass) :
     compass(_compass)
 {
     gcs().send_text(MAV_SEVERITY_INFO, "CompassLearn: Initialised");
+    for (uint8_t i=0; i<compass.get_count(); i++) {
+        if (compass._state[i].use_for_yaw) {
+            // reset scale factors, we can't learn scale factors in
+            // flight
+            compass.set_and_save_scale_factor(i, 0.0);
+        }
+    }
 }
 
 /*
@@ -24,14 +34,15 @@ CompassLearn::CompassLearn(Compass &_compass) :
  */
 void CompassLearn::update(void)
 {
-    const AP_AHRS &ahrs = AP::ahrs();
+    const AP_Vehicle *vehicle = AP::vehicle();
     if (converged || compass.get_learn_type() != Compass::LEARN_INFLIGHT ||
-        !hal.util->get_soft_armed() || ahrs.get_time_flying_ms() < 3000) {
+        !hal.util->get_soft_armed() || vehicle->get_time_flying_ms() < 3000) {
         // only learn when flying and with enough time to be clear of
         // the ground
         return;
     }
 
+    const AP_AHRS &ahrs = AP::ahrs();
     if (!have_earth_field) {
         Location loc;
         if (!ahrs.get_position(loc)) {
@@ -42,17 +53,8 @@ void CompassLearn::update(void)
         // remember primary mag
         primary_mag = compass.get_primary();
 
-        // setup the expected earth field at this location
-        float declination_deg=0, inclination_deg=0, intensity_gauss=0;
-        AP_Declination::get_mag_field_ef(loc.lat*1.0e-7f, loc.lng*1.0e-7f, intensity_gauss, declination_deg, inclination_deg);
-
-        // create earth field
-        mag_ef = Vector3f(intensity_gauss*1000, 0.0, 0.0);
-        Matrix3f R;
-
-        R.from_euler(0.0f, -ToRad(inclination_deg), ToRad(declination_deg));
-        mag_ef = R * mag_ef;
-
+        // setup the expected earth field in mGauss at this location
+        mag_ef = AP_Declination::get_earth_field_ga(loc) * 1000;
         have_earth_field = true;
 
         // form eliptical correction matrix and invert it. This is
@@ -71,8 +73,9 @@ void CompassLearn::update(void)
         }
 
         // set initial error to field intensity
+        float intensity = mag_ef.length();
         for (uint16_t i=0; i<num_sectors; i++) {
-            errors[i] = intensity_gauss*1000;
+            errors[i] = intensity;
         }
         
         gcs().send_text(MAV_SEVERITY_INFO, "CompassLearn: have earth field");
@@ -139,6 +142,7 @@ void CompassLearn::update(void)
             for (uint8_t i=0; i<compass.get_count(); i++) {
                 if (compass._state[i].use_for_yaw) {
                     compass.save_offsets(i);
+                    compass.set_and_save_scale_factor(i, 0.0);
                     compass.set_use_for_yaw(i, true);
                 }
             }
@@ -237,3 +241,6 @@ void CompassLearn::process_sample(const struct sample &s)
     worst_error = worstv;
     best_yaw_deg = wrap_360(degrees(s.attitude.z) + besti * (360/num_sectors));
 }
+
+#endif // COMPASS_LEARN_ENABLED
+
