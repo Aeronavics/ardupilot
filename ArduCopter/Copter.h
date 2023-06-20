@@ -53,6 +53,7 @@
 #include <AP_InertialNav/AP_InertialNav.h>  // ArduPilot Mega inertial navigation library
 #include <AC_WPNav/AC_WPNav.h>              // ArduCopter waypoint navigation library
 #include <AC_WPNav/AC_Loiter.h>             // ArduCopter Loiter Mode Library
+#include <AC_WPNav/AC_Hasten.h>             // Hasten Mode Library
 #include <AC_WPNav/AC_Circle.h>             // circle navigation library
 #include <AP_Declination/AP_Declination.h>  // ArduPilot Mega Declination Helper Library
 #include <AP_RCMapper/AP_RCMapper.h>        // RC input mapping library
@@ -210,6 +211,7 @@ public:
     friend class ModeGuided;
     friend class ModeLand;
     friend class ModeLoiter;
+    friend class ModeHasten;
     friend class ModePosHold;
     friend class ModeRTL;
     friend class ModeSmartRTL;
@@ -462,6 +464,7 @@ private:
     AC_PosControl *pos_control;
     AC_WPNav *wp_nav;
     AC_Loiter *loiter_nav;
+    AC_Hasten *hasten_nav;
 
 #if MODE_CIRCLE_ENABLED == ENABLED
     AC_Circle *circle_nav;
@@ -946,6 +949,9 @@ private:
     ModeLand mode_land;
 #if MODE_LOITER_ENABLED == ENABLED
     ModeLoiter mode_loiter;
+#endif
+#if MODE_HASTEN_ENABLED == ENABLED
+    ModeHasten mode_hasten;
 #endif
 #if MODE_POSHOLD_ENABLED == ENABLED
     ModePosHold mode_poshold;
