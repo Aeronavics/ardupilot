@@ -89,15 +89,6 @@ void ModeLoiter::run()
         // apply SIMPLE mode transform to pilot inputs
         update_simple_mode();
 
-        // convert pilot input to lean angles
-        get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max());
-
-        // process pilot's roll and pitch input
-        loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
-
-        // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
-
         // get pilot desired climb rate
         target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->get_control_in());
         target_climb_rate = constrain_float(target_climb_rate, -get_pilot_speed_dn(), g.pilot_speed_up);
@@ -131,8 +122,12 @@ void ModeLoiter::run()
             takeoff.start(constrain_float(g.pilot_takeoff_alt,0.0f,1000.0f));
         }
 
-        // get avoidance adjusted climb rate
-        target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
+        if (target_climb_rate >= 0) {
+            // get avoidance adjusted climb rate
+            target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
+        } else {
+            target_climb_rate = 0;
+        }
 
         // set position controller targets adjusted for pilot input
         takeoff.do_pilot_takeoff(target_climb_rate);
@@ -158,6 +153,15 @@ void ModeLoiter::run()
     case AltHold_Flying:
         // set motors to full range
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
+
+        // convert pilot input to lean angles
+        get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max());
+
+        // process pilot's roll and pitch input
+        loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
+
+        // get pilot's desired yaw rate
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
 
 #if PRECISION_LANDING == ENABLED
         if (do_precision_loiter()) {
