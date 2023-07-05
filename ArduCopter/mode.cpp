@@ -587,12 +587,12 @@ void Mode::land_run_horizontal_control()
                 }
                 copter.ap.land_repo_active = true;
             }
-        }
 
-        // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
-        if (!is_zero(target_yaw_rate)) {
-            auto_yaw.set_mode(AUTO_YAW_HOLD);
+            // get pilot's desired yaw rate
+            target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+            if (!is_zero(target_yaw_rate)) {
+                auto_yaw.set_mode(AUTO_YAW_HOLD);
+            }
         }
     }
 
