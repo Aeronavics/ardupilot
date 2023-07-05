@@ -1749,6 +1749,8 @@ public:
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool allows_autotune() const override { return true; }
 
+    bool is_landing() const override;
+
 #if PRECISION_LANDING == ENABLED
     void set_precision_hasten_enabled(bool value) { _precision_hasten_enabled = value; }
 #endif
@@ -1772,5 +1774,9 @@ private:
 #if PRECISION_LANDING == ENABLED
     bool _precision_hasten_enabled;
 #endif
+    bool _landing = false;
+
+    uint32_t _land_start_time;
+    bool _land_pause;
 
 };
