@@ -36,6 +36,8 @@ public:
         ZIGZAG    =    24,  // ZIGZAG mode is able to fly in a zigzag manner with predefined point A and point B
         SYSTEMID  =    25,  // System ID mode produces automated system identification signals in the controllers
         AUTOROTATE =   26,  // Autonomous autorotation
+        HASTEN =       29,  // Same as Loiter, with its own set of parameters
+        
     };
 
     // constructor
@@ -135,6 +137,7 @@ protected:
     ParametersG2 &g2;
     AC_WPNav *&wp_nav;
     AC_Loiter *&loiter_nav;
+    AC_Hasten *&hasten_nav;
     AC_PosControl *&pos_control;
     AP_InertialNav &inertial_nav;
     AP_AHRS &ahrs;
@@ -1728,3 +1731,46 @@ private:
 
 };
 #endif
+
+class ModeHasten : public Mode {
+
+public:
+    // inherit constructor
+    using Mode::Mode;
+    Number mode_number() const override { return Number::HASTEN; }
+
+    bool init(bool ignore_checks) override;
+    void run() override;
+
+    bool requires_GPS() const override { return true; }
+    bool has_manual_throttle() const override { return false; }
+    bool allows_arming(AP_Arming::Method method) const override { return true; };
+    bool is_autopilot() const override { return false; }
+    bool has_user_takeoff(bool must_navigate) const override { return true; }
+    bool allows_autotune() const override { return true; }
+
+#if PRECISION_LANDING == ENABLED
+    void set_precision_hasten_enabled(bool value) { _precision_hasten_enabled = value; }
+#endif
+
+protected:
+
+    const char *name() const override { return "HASTEN"; }
+    const char *name4() const override { return "HAST"; }
+
+    uint32_t wp_distance() const override;
+    int32_t wp_bearing() const override;
+    float crosstrack_error() const override { return pos_control->crosstrack_error();}
+
+#if PRECISION_LANDING == ENABLED
+    bool do_precision_hasten();
+    void precision_hasten_xy();
+#endif
+
+private:
+
+#if PRECISION_LANDING == ENABLED
+    bool _precision_hasten_enabled;
+#endif
+
+};
