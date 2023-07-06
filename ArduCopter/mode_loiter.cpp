@@ -217,7 +217,7 @@ void ModeLoiter::run()
                     Vector3f{-copter.ahrs.sin_pitch(),  copter.ahrs.cos_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.cos_pitch() * copter.ahrs.cos_roll()}
                 };
                 
-                int16_t fc_height_rng = copter.rangefinder_state.alt_cm - (rngRotMatrix * copter.rangefinder.get_pos_offset_orient(ROTATION_PITCH_270)).z;
+                int16_t fc_height_rng = copter.rangefinder_state.alt_cm - (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270) - (rngRotMatrix * copter.rangefinder.get_pos_offset_orient(ROTATION_PITCH_270)).z);
 
                 target_climb_rate = MAX(target_climb_rate, MIN(((fc_height_rng * fc_height_rng) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
                 if (fc_height_rng <= g.pilot_takeoff_alt) {
