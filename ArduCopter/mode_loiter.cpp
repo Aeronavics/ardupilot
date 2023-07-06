@@ -210,10 +210,19 @@ void ModeLoiter::run()
             attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate);
 
             if (copter.rangefinder_state.enabled && copter.rangefinder_state.alt_healthy && target_climb_rate < 0) {
-                target_climb_rate = MAX(target_climb_rate, MIN(((copter.rangefinder_state.alt_cm * copter.rangefinder_state.alt_cm) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
-                if (copter.rangefinder_state.alt_cm <= g.pilot_takeoff_alt) {
+
+                Matrix3f rngRotMatrix = {
+                    Vector3f{copter.ahrs.cos_pitch(),   copter.ahrs.sin_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.sin_pitch() * copter.ahrs.cos_roll()}, 
+                    Vector3f{0,                         copter.ahrs.cos_roll(),                             -copter.ahrs.sin_roll()},
+                    Vector3f{-copter.ahrs.sin_pitch(),  copter.ahrs.cos_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.cos_pitch() * copter.ahrs.cos_roll()}
+                };
+                
+                int16_t fc_height_rng = copter.rangefinder_state.alt_cm - (rngRotMatrix * copter.rangefinder.get_pos_offset_orient(ROTATION_PITCH_270)).z;
+
+                target_climb_rate = MAX(target_climb_rate, MIN(((fc_height_rng * fc_height_rng) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
+                if (fc_height_rng <= g.pilot_takeoff_alt) {
                     target_climb_rate = 0;
-                    if (copter.rangefinder_state.alt_cm < g.pilot_takeoff_alt*0.75) {
+                    if (fc_height_rng < g.pilot_takeoff_alt*0.75) {
                         target_climb_rate = 5;
                     }
                 }
