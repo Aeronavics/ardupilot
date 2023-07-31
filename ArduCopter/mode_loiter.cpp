@@ -125,6 +125,8 @@ void ModeLoiter::run()
         }
 
         if (target_climb_rate >= 0) {
+            // get takeoff speed from parameter
+            target_climb_rate = g.pilot_takeoff_spd;
             // get avoidance adjusted climb rate
             target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
         } else {
@@ -159,7 +161,7 @@ void ModeLoiter::run()
             _landing || (
                 copter.rangefinder_state.enabled && 
                 copter.rangefinder_state.alt_healthy && 
-                copter.rangefinder_state.alt_cm <= g.pilot_takeoff_alt && 
+                copter.rangefinder_state.alt_cm <= g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270) && 
                 target_climb_rate <= -get_pilot_speed_dn()*0.99 && 
                 copter.gps.ground_speed_cm() <= 50
             )
@@ -217,13 +219,13 @@ void ModeLoiter::run()
                     Vector3f{-copter.ahrs.sin_pitch(),  copter.ahrs.cos_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.cos_pitch() * copter.ahrs.cos_roll()}
                 };
                 
-                int16_t fc_height_rng = copter.rangefinder_state.alt_cm - (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270) - (rngRotMatrix * copter.rangefinder.get_pos_offset_orient(ROTATION_PITCH_270)).z);
+                int16_t fc_height_rng = copter.rangefinder_state.alt_cm_glitch_protected - (rngRotMatrix * copter.rangefinder.get_pos_offset_orient(ROTATION_PITCH_270)).z;
 
                 target_climb_rate = MAX(target_climb_rate, MIN(((fc_height_rng * fc_height_rng) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
-                if (fc_height_rng <= g.pilot_takeoff_alt) {
+                if (fc_height_rng <= g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270)) {
                     target_climb_rate = 0;
-                    if (fc_height_rng < g.pilot_takeoff_alt*0.75) {
-                        target_climb_rate = 5;
+                    if (fc_height_rng < (g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))*0.85) {
+                        target_climb_rate = 10;
                     }
                 }
             }

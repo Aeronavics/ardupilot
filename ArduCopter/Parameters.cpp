@@ -75,6 +75,15 @@ const AP_Param::Info Copter::var_info[] = {
     // @Increment: 10
     GSCALAR(pilot_takeoff_alt,  "PILOT_TKOFF_ALT",  PILOT_TKOFF_ALT_DEFAULT),
 
+    // @Param: PILOT_TKOFF_SPD
+    // @DisplayName: Pilot takeoff speed
+    // @Description: Speed that altitude control modes will climb at when a takeoff is triggered with the throttle stick.
+    // @User: Standard
+    // @Units: cm/s
+    // @Range: 0.0 1000.0
+    // @Increment: 1
+    GSCALAR(pilot_takeoff_spd,  "PILOT_TKOFF_SPD",  10),
+
     // @Param: PILOT_THR_BHV
     // @DisplayName: Throttle stick behavior
     // @Description: Bitmask containing various throttle stick options. TX with sprung throttle can set PILOT_THR_BHV to "1" so motor feedback when landed starts from mid-stick instead of bottom of stick.

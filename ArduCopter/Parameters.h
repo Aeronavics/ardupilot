@@ -376,6 +376,8 @@ public:
 
         // 254,255: reserved
 
+        k_param_pilot_takeoff_spd = 256,
+
         k_param_vehicle = 257, // vehicle common block of parameters
 
         // the k_param_* space is 9-bits in size
@@ -393,6 +395,7 @@ public:
     AP_Float        throttle_filt;
     AP_Int16        throttle_behavior;
     AP_Float        pilot_takeoff_alt;
+    AP_Float        pilot_takeoff_spd;
 
 #if MODE_RTL_ENABLED == ENABLED
     AP_Int16        rtl_altitude;
