@@ -1020,6 +1020,7 @@ public:
     Number mode_number() const override { return Number::LOITER; }
 
     bool init(bool ignore_checks) override;
+    void exit() override;
     void run() override;
 
     bool requires_GPS() const override { return true; }
@@ -1740,6 +1741,7 @@ public:
     Number mode_number() const override { return Number::HASTEN; }
 
     bool init(bool ignore_checks) override;
+    void exit() override;
     void run() override;
 
     bool requires_GPS() const override { return true; }

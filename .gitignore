@@ -141,5 +141,6 @@ segv_*out
 /ArduSub/repl/
 persistent.dat
 dumpstack_*out
+dumpstack_*ou
 build.tmp.binaries/
 tasklist.json

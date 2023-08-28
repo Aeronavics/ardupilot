@@ -129,7 +129,7 @@ void ModeHasten::run()
             target_climb_rate = g.pilot_takeoff_spd;
             // get avoidance adjusted climb rate
             target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
-        } else {
+        } else if (target_climb_rate >= -get_pilot_speed_dn()*0.8) {
             target_climb_rate = 0;
         }
 
@@ -157,11 +157,35 @@ void ModeHasten::run()
         break;
 
     case AltHold_Flying:
+        motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
+
+        // convert pilot input to lean angles
+        get_pilot_desired_lean_angles(target_roll, target_pitch, hasten_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max());
+
+        // process pilot's roll and pitch input
+        hasten_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
+
+        // get pilot's desired yaw rate
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
+
+#if PRECISION_LANDING == ENABLED
+        if (do_precision_hasten()) {
+            precision_hasten_xy();
+        }
+#endif
+
+        // run hasten controller
+        hasten_nav->update();
+
+        // call attitude controller
+        attitude_control->input_thrust_vector_rate_heading(hasten_nav->get_thrust_vector(), target_yaw_rate);
+
+        
         if (
             _landing || (
                 copter.rangefinder_state.enabled && 
                 copter.rangefinder_state.alt_healthy && 
-                copter.rangefinder_state.alt_cm <= g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270) && 
+                copter.rangefinder_state.alt_cm_glitch_protected <= (g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270) + 10) && 
                 target_climb_rate <= -get_pilot_speed_dn()*0.99 && 
                 copter.gps.ground_speed_cm() <= 50
             )
@@ -172,61 +196,49 @@ void ModeHasten::run()
                 _land_pause = true;
                 _landing = true;
             }
-            // cancel landing if throttle is not at minimum and the landing descent has not yet started
-            if (_landing && target_climb_rate > -get_pilot_speed_dn()*0.99 && _land_pause) {
-                _landing = false;
-            }
-
-            // set motors to full range
-            motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
             // pause before beginning land descent
             if (_land_pause && millis()-_land_start_time >= LAND_WITH_DELAY_MS) {
                 _land_pause = false;
             }
 
-            land_run_horizontal_control();
-            land_run_vertical_control(_land_pause);
-        } else {
-            motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
-
-            // convert pilot input to lean angles
-            get_pilot_desired_lean_angles(target_roll, target_pitch, hasten_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max());
-
-            // process pilot's roll and pitch input
-            hasten_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
-
-            // get pilot's desired yaw rate
-            target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
-
-#if PRECISION_LANDING == ENABLED
-            if (do_precision_hasten()) {
-                precision_hasten_xy();
+            // cancel landing if throttle is not at minimum and the landing descent has not yet started
+            if (_land_pause && (target_climb_rate > -get_pilot_speed_dn()*0.99 || target_yaw_rate < -500 || target_yaw_rate > 500 || copter.gps.ground_speed_cm() >= 50)) {
+                _landing = false;
             }
-#endif
+            
+            // cancel landing if landing descent has started and high throttle cancels landing is set and throttle is high
+            if (!_land_pause && (g.throttle_behavior & THR_BEHAVE_HIGH_THROTTLE_CANCELS_LAND) != 0 && copter.rc_throttle_control_in_filter.get() > LAND_CANCEL_TRIGGER_THR){
+                _landing = false;
+            }
 
-            // run hasten controller
-            hasten_nav->update();
+            if (_landing) {
+                auto_yaw.set_mode(AUTO_YAW_HOLD);
+                land_run_horizontal_control();
+                land_run_vertical_control(_land_pause);
+            }
 
-            // call attitude controller
-            attitude_control->input_thrust_vector_rate_heading(hasten_nav->get_thrust_vector(), target_yaw_rate);
-
-            if (copter.rangefinder_state.enabled && copter.rangefinder_state.alt_healthy && target_climb_rate < 0) {
-
-                Matrix3f rngRotMatrix = {
+        }
+        else 
+        {
+            Matrix3f rngRotMatrix = {
                     Vector3f{copter.ahrs.cos_pitch(),   copter.ahrs.sin_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.sin_pitch() * copter.ahrs.cos_roll()}, 
                     Vector3f{0,                         copter.ahrs.cos_roll(),                             -copter.ahrs.sin_roll()},
                     Vector3f{-copter.ahrs.sin_pitch(),  copter.ahrs.cos_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.cos_pitch() * copter.ahrs.cos_roll()}
                 };
                 
-                int16_t fc_height_rng = copter.rangefinder_state.alt_cm_glitch_protected - (rngRotMatrix * copter.rangefinder.get_pos_offset_orient(ROTATION_PITCH_270)).z;
+            int16_t fc_height_rng = copter.rangefinder_state.alt_cm_glitch_protected - (rngRotMatrix * copter.rangefinder.get_pos_offset_orient(ROTATION_PITCH_270)).z;
 
-                target_climb_rate = MAX(target_climb_rate, MIN(((fc_height_rng * fc_height_rng) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
+            if (copter.rangefinder_state.enabled && copter.rangefinder_state.alt_healthy && fc_height_rng < (g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))*0.85) {
+                target_climb_rate = MAX(target_climb_rate, MIN(powF(fc_height_rng - g.pilot_takeoff_alt, 2) / (powF(g.pilot_takeoff_alt, 2)), 1) * g.pilot_speed_up);
+            }
+            else if (copter.rangefinder_state.enabled && copter.rangefinder_state.alt_healthy && target_climb_rate < 0) {
+
+                //target_climb_rate = MAX(target_climb_rate, MIN(((fc_height_rng * fc_height_rng) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
+                target_climb_rate = MAX(target_climb_rate, MIN(powF((fc_height_rng - (g.pilot_takeoff_alt * 0.85)) / (2 * get_pilot_speed_dn()), 2) + 0.05, 1) * -get_pilot_speed_dn());
+
                 if (fc_height_rng <= g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270)) {
                     target_climb_rate = 0;
-                    if (fc_height_rng < (g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))*0.85) {
-                        target_climb_rate = 10;
-                    }
                 }
             }
             
@@ -259,6 +271,11 @@ int32_t ModeHasten::wp_bearing() const
 bool ModeHasten::is_landing() const
 {
     return _landing;
+}
+
+void ModeHasten::exit()
+{
+    _landing = false;
 }
 
 #endif
