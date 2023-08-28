@@ -159,28 +159,9 @@ void ModeLoiter::run()
     case AltHold_Flying:
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
-        // convert pilot input to lean angles
-        get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max());
-
-        // process pilot's roll and pitch input
-        loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
-
         // get pilot's desired yaw rate
         target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
 
-#if PRECISION_LANDING == ENABLED
-        if (do_precision_loiter()) {
-            precision_loiter_xy();
-        }
-#endif
-
-        // run loiter controller
-        loiter_nav->update();
-
-        // call attitude controller
-        attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate);
-
-        
         if (
             _landing || (
                 copter.rangefinder_state.enabled && 
@@ -221,6 +202,24 @@ void ModeLoiter::run()
         }
         else 
         {
+            // convert pilot input to lean angles
+            get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max());
+
+            // process pilot's roll and pitch input
+            loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
+
+#if PRECISION_LANDING == ENABLED
+            if (do_precision_loiter()) {
+                precision_loiter_xy();
+            }
+#endif
+
+            // run loiter controller
+            loiter_nav->update();
+
+            // call attitude controller
+            attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate);
+
             Matrix3f rngRotMatrix = {
                     Vector3f{copter.ahrs.cos_pitch(),   copter.ahrs.sin_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.sin_pitch() * copter.ahrs.cos_roll()}, 
                     Vector3f{0,                         copter.ahrs.cos_roll(),                             -copter.ahrs.sin_roll()},
