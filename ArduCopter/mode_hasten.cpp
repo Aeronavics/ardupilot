@@ -184,7 +184,7 @@ void ModeHasten::run()
             }
 
             // cancel landing if throttle is not at minimum and the landing descent has not yet started
-            if (_land_pause && (target_climb_rate > -get_pilot_speed_dn()*0.99 || target_yaw_rate < -500 || target_yaw_rate > 500 || copter.gps.ground_speed_cm() >= 50)) {
+            if (_land_pause && (target_climb_rate > -get_pilot_speed_dn()*0.99 || copter.gps.ground_speed_cm() >= 50)) {
                 _landing = false;
             }
             
