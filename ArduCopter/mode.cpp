@@ -13,6 +13,7 @@ Mode::Mode(void) :
     g2(copter.g2),
     wp_nav(copter.wp_nav),
     loiter_nav(copter.loiter_nav),
+    sprint_nav(copter.sprint_nav),
     pos_control(copter.pos_control),
     inertial_nav(copter.inertial_nav),
     ahrs(copter.ahrs),
@@ -60,6 +61,12 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
 #if MODE_LOITER_ENABLED == ENABLED
         case Mode::Number::LOITER:
             ret = &mode_loiter;
+            break;
+#endif
+
+#if MODE_SPRINT_ENABLED == ENABLED
+        case Mode::Number::SPRINT:
+            ret = &mode_sprint;
             break;
 #endif
 
@@ -675,12 +682,12 @@ void Mode::land_run_horizontal_control()
                 }
 #endif
             }
-        }
 
-        // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
-        if (!is_zero(target_yaw_rate)) {
-            auto_yaw.set_mode(AUTO_YAW_HOLD);
+            // get pilot's desired yaw rate
+            target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
+            if (!is_zero(target_yaw_rate)) {
+                auto_yaw.set_mode(AUTO_YAW_HOLD);
+            }
         }
     }
 

@@ -75,6 +75,24 @@ const AP_Param::Info Copter::var_info[] = {
     // @Increment: 10
     GSCALAR(pilot_takeoff_alt,  "PILOT_TKOFF_ALT",  PILOT_TKOFF_ALT_DEFAULT),
 
+    // @Param: PILOT_TKOFF_SPD
+    // @DisplayName: Pilot takeoff speed
+    // @Description: Speed that altitude control modes will climb at when a takeoff is triggered with the throttle stick.
+    // @User: Standard
+    // @Units: cm/s
+    // @Range: 0.0 1000.0
+    // @Increment: 1
+    GSCALAR(pilot_takeoff_spd,  "PILOT_TKOFF_SPD",  10),
+
+    // @Param: PILOT_LND_DELAY
+    // @DisplayName: Pilot landing delay
+    // @Description: Delay the aircraft waits before entering the pilot initiated landing sequence.
+    // @User: Standard
+    // @Units: ms
+    // @Range: 0 5000
+    // @Increment: 1
+    GSCALAR(pilot_land_delay,  "PILOT_LND_DELAY",  2000),
+
     // @Param: PILOT_THR_BHV
     // @DisplayName: Throttle stick behavior
     // @Description: Bitmask containing various throttle stick options. TX with sprung throttle can set PILOT_THR_BHV to "1" so motor feedback when landed starts from mid-stick instead of bottom of stick.
@@ -259,7 +277,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Param: FLTMODE1
     // @DisplayName: Flight Mode 1
     // @Description: Flight mode when pwm of Flightmode channel(FLTMODE_CH) is <= 1230
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,21:Smart_RTL,22:FlowHold,23:Follow,24:ZigZag,25:SystemID,26:Heli_Autorotate,27:Auto RTL
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,21:Smart_RTL,22:FlowHold,23:Follow,24:ZigZag,25:SystemID,26:Heli_Autorotate,27:Auto RTL,29:Sprint
     // @User: Standard
     GSCALAR(flight_mode1, "FLTMODE1",               (uint8_t)FLIGHT_MODE_1),
 
@@ -308,7 +326,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Param: INITIAL_MODE
     // @DisplayName: Initial flight mode
     // @Description: This selects the mode to start in on boot. This is useful for when you want to start in AUTO mode on boot without a receiver.
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,21:Smart_RTL,22:FlowHold,23:Follow,24:ZigZag,25:SystemID,26:Heli_Autorotate
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,21:Smart_RTL,22:FlowHold,23:Follow,24:ZigZag,25:SystemID,26:Heli_Autorotate,29:Sprint
     // @User: Advanced
     GSCALAR(initial_mode,        "INITIAL_MODE",     (uint8_t)Mode::Number::STABILIZE),
 
@@ -499,6 +517,12 @@ const AP_Param::Info Copter::var_info[] = {
     // @Group: LOIT_
     // @Path: ../libraries/AC_WPNav/AC_Loiter.cpp
     GOBJECTPTR(loiter_nav, "LOIT_", AC_Loiter),
+
+#if MODE_SPRINT_ENABLED == ENABLED
+    // @Group: SPRINT_
+    // @Path: ../libraries/AC_WPNav/AC_Sprint.cpp
+    GOBJECTPTR(sprint_nav, "SPRINT_",  AC_Sprint),
+#endif
 
 #if MODE_CIRCLE_ENABLED == ENABLED
     // @Group: CIRCLE_

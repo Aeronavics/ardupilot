@@ -272,6 +272,12 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Sprint mode - allows vehicle to hold global position
+#ifndef MODE_SPRINT_ENABLED
+# define MODE_SPRINT_ENABLED ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 // Position Hold - enable holding of global position
 #ifndef MODE_POSHOLD_ENABLED
 # define MODE_POSHOLD_ENABLED ENABLED

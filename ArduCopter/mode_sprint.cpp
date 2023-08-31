@@ -1,13 +1,13 @@
 #include "Copter.h"
 
-#if MODE_LOITER_ENABLED == ENABLED
+#if MODE_SPRINT_ENABLED == ENABLED
 
 /*
- * Init and run calls for loiter flight mode
+ * Init and run calls for sprint flight mode
  */
 
-// loiter_init - initialise loiter controller
-bool ModeLoiter::init(bool ignore_checks)
+// sprint_init - initialise sprint controller
+bool ModeSprint::init(bool ignore_checks)
 {
     if (!copter.failsafe.radio) {
         float target_roll, target_pitch;
@@ -15,15 +15,15 @@ bool ModeLoiter::init(bool ignore_checks)
         update_simple_mode();
 
         // convert pilot input to lean angles
-        get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
+        get_pilot_desired_lean_angles(target_roll, target_pitch, sprint_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
 
         // process pilot's roll and pitch input
-        loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
+        sprint_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
     } else {
         // clear out pilot desired acceleration in case radio failsafe event occurs and we do not switch to RTL for some reason
-        loiter_nav->clear_pilot_desired_acceleration();
+        sprint_nav->clear_pilot_desired_acceleration();
     }
-    loiter_nav->init_target();
+    sprint_nav->init_target();
 
     // initialise the vertical position controller
     if (!pos_control->is_active_z()) {
@@ -35,23 +35,23 @@ bool ModeLoiter::init(bool ignore_checks)
     pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
 #if PRECISION_LANDING == ENABLED
-    _precision_loiter_active = false;
+    _precision_sprint_active = false;
 #endif
 
     return true;
 }
 
 #if PRECISION_LANDING == ENABLED
-bool ModeLoiter::do_precision_loiter()
+bool ModeSprint::do_precision_sprint()
 {
-    if (!_precision_loiter_enabled) {
+    if (!_precision_sprint_enabled) {
         return false;
     }
     if (copter.ap.land_complete_maybe) {
         return false;        // don't move on the ground
     }
     // if the pilot *really* wants to move the vehicle, let them....
-    if (loiter_nav->get_pilot_desired_acceleration().length() > 50.0f) {
+    if (sprint_nav->get_pilot_desired_acceleration().length() > 50.0f) {
         return false;
     }
     if (!copter.precland.target_acquired()) {
@@ -60,9 +60,9 @@ bool ModeLoiter::do_precision_loiter()
     return true;
 }
 
-void ModeLoiter::precision_loiter_xy()
+void ModeSprint::precision_sprint_xy()
 {
-    loiter_nav->clear_pilot_desired_acceleration();
+    sprint_nav->clear_pilot_desired_acceleration();
     Vector2f target_pos, target_vel;
     if (!copter.precland.get_target_position_cm(target_pos)) {
         target_pos = inertial_nav.get_position_xy_cm();
@@ -79,9 +79,9 @@ void ModeLoiter::precision_loiter_xy()
 }
 #endif
 
-// loiter_run - runs the loiter controller
+// sprint_run - runs the sprint controller
 // should be called at 100hz or more
-void ModeLoiter::run()
+void ModeSprint::run()
 {
     float target_roll, target_pitch;
     float target_yaw_rate = 0.0f;
@@ -101,27 +101,27 @@ void ModeLoiter::run()
 
     } else {
         // clear out pilot desired acceleration in case radio failsafe event occurs and we do not switch to RTL for some reason
-        loiter_nav->clear_pilot_desired_acceleration();
+        sprint_nav->clear_pilot_desired_acceleration();
     }
 
-    // relax loiter target if we might be landed
+    // relax sprint target if we might be landed
     if (copter.ap.land_complete_maybe) {
-        loiter_nav->soften_for_landing();
+        sprint_nav->soften_for_landing();
     }
 
-    // Loiter State Machine Determination
-    AltHoldModeState loiter_state = get_alt_hold_state(target_climb_rate);
+    // Sprint State Machine Determination
+    AltHoldModeState sprint_state = get_alt_hold_state(target_climb_rate);
 
-    // Loiter State Machine
-    switch (loiter_state) {
+    // Sprint State Machine
+    switch (sprint_state) {
 
     case AltHold_MotorStopped:
         _landing = false;
         attitude_control->reset_rate_controller_I_terms();
         attitude_control->reset_yaw_target_and_rate();
         pos_control->relax_z_controller(0.0f);   // forces throttle output to decay to zero
-        loiter_nav->init_target();
-        attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
+        sprint_nav->init_target();
+        attitude_control->input_thrust_vector_rate_heading(sprint_nav->get_thrust_vector(), target_yaw_rate, false);
         break;
 
     case AltHold_Takeoff:
@@ -144,11 +144,11 @@ void ModeLoiter::run()
         // set position controller targets adjusted for pilot input
         takeoff.do_pilot_takeoff(target_climb_rate);
 
-        // run loiter controller
-        loiter_nav->update();
+        // run sprint controller
+        sprint_nav->update();
 
         // call attitude controller
-        attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
+        attitude_control->input_thrust_vector_rate_heading(sprint_nav->get_thrust_vector(), target_yaw_rate, false);
         break;
 
     case AltHold_Landed_Ground_Idle:
@@ -159,8 +159,8 @@ void ModeLoiter::run()
     case AltHold_Landed_Pre_Takeoff:
         _landing = false;
         attitude_control->reset_rate_controller_I_terms_smoothly();
-        loiter_nav->init_target();
-        attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
+        sprint_nav->init_target();
+        attitude_control->input_thrust_vector_rate_heading(sprint_nav->get_thrust_vector(), target_yaw_rate, false);
         pos_control->relax_z_controller(0.0f);   // forces throttle output to decay to zero
         break;
 
@@ -212,33 +212,33 @@ void ModeLoiter::run()
         else 
         {
             // convert pilot input to lean angles
-            get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
+            get_pilot_desired_lean_angles(target_roll, target_pitch, sprint_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
 
             // process pilot's roll and pitch input
-            loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
+            sprint_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
 
 #if PRECISION_LANDING == ENABLED
-            bool precision_loiter_old_state = _precision_loiter_active;
-            if (do_precision_loiter()) {
-                precision_loiter_xy();
-                _precision_loiter_active = true;
+            bool precision_sprint_old_state = _precision_sprint_active;
+            if (do_precision_sprint()) {
+                precision_sprint_xy();
+                _precision_sprint_active = true;
             } else {
-                _precision_loiter_active = false;
+                _precision_sprint_active = false;
             }
-            if (precision_loiter_old_state && !_precision_loiter_active) {
-                // prec loiter was active, not any more, let's init again as user takes control
-                loiter_nav->init_target();
+            if (precision_sprint_old_state && !_precision_sprint_active) {
+                // prec sprint was active, not any more, let's init again as user takes control
+                sprint_nav->init_target();
             }
-            // run loiter controller if we are not doing prec loiter
-            if (!_precision_loiter_active) {
-                loiter_nav->update();
+            // run sprint controller if we are not doing prec sprint
+            if (!_precision_sprint_active) {
+                sprint_nav->update();
             }
 #else
-            loiter_nav->update();
+            sprint_nav->update();
 #endif
 
             // call attitude controller
-            attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate);
+            attitude_control->input_thrust_vector_rate_heading(sprint_nav->get_thrust_vector(), target_yaw_rate);
 
             // Matrix3f rngRotMatrix = {
             //         Vector3f{copter.ahrs.cos_pitch(),   copter.ahrs.sin_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.sin_pitch() * copter.ahrs.cos_roll()}, 
@@ -254,20 +254,17 @@ void ModeLoiter::run()
             if (copter.rangefinder_state.enabled && copter.rangefinder_state.alt_healthy && alt_above_ground_cm < (g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))*0.85) {
                 // target_climb_rate = MAX(target_climb_rate, MIN(powF(alt_above_ground_cm - g.pilot_takeoff_alt, 2) / (powF(g.pilot_takeoff_alt, 2)), 1) * g.pilot_speed_up);
                 target_climb_rate = MAX(target_climb_rate, MIN((g.pilot_takeoff_alt - alt_above_ground_cm) / g.pilot_takeoff_alt, 1) * g.pilot_speed_up);
-
             }
             else if (copter.rangefinder_state.enabled && copter.rangefinder_state.alt_healthy && target_climb_rate < 0) {
 
-                // target_climb_rate = MAX(target_climb_rate, MIN(((fc_height_rng * fc_height_rng) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
+                //target_climb_rate = MAX(target_climb_rate, MIN(((fc_height_rng * fc_height_rng) / (3 * ((g.pilot_takeoff_alt * g.pilot_takeoff_alt) + ((get_pilot_speed_dn() * get_pilot_speed_dn()) / 2)))), 1) * -get_pilot_speed_dn());
                 // target_climb_rate = MAX(target_climb_rate, MIN(powF((alt_above_ground_cm - (g.pilot_takeoff_alt * 0.85)) / (2 * get_pilot_speed_dn()), 2) + 0.05, 1) * -get_pilot_speed_dn());
-                target_climb_rate = MAX(target_climb_rate, MIN((alt_above_ground_cm - g.pilot_takeoff_alt) / g.pilot_takeoff_alt, 1) * -get_pilot_speed_dn());
+                target_climb_rate = MAX(target_climb_rate, MIN((alt_above_ground_cm - g.pilot_takeoff_alt) / (2 * g.pilot_takeoff_alt), 1) * -get_pilot_speed_dn());
 
                 if (alt_above_ground_cm <= g.pilot_takeoff_alt + copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270)) {
                     target_climb_rate = 0;
                 }
             }
-
-
 
             // get avoidance adjusted climb rate
             target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
@@ -285,22 +282,22 @@ void ModeLoiter::run()
     pos_control->update_z_controller();
 }
 
-uint32_t ModeLoiter::wp_distance() const
+uint32_t ModeSprint::wp_distance() const
 {
-    return loiter_nav->get_distance_to_target();
+    return sprint_nav->get_distance_to_target();
 }
 
-int32_t ModeLoiter::wp_bearing() const
+int32_t ModeSprint::wp_bearing() const
 {
-    return loiter_nav->get_bearing_to_target();
+    return sprint_nav->get_bearing_to_target();
 }
 
-bool ModeLoiter::is_landing() const
+bool ModeSprint::is_landing() const
 {
     return _landing;
 }
 
-void ModeLoiter::exit()
+void ModeSprint::exit()
 {
     _landing = false;
 }

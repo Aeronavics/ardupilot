@@ -53,6 +53,7 @@
 #include <AP_InertialNav/AP_InertialNav.h>  // inertial navigation library
 #include <AC_WPNav/AC_WPNav.h>              // ArduCopter waypoint navigation library
 #include <AC_WPNav/AC_Loiter.h>             // ArduCopter Loiter Mode Library
+#include <AC_WPNav/AC_Sprint.h>             // Arducopter Sprint Mode Library
 #include <AC_WPNav/AC_Circle.h>             // circle navigation library
 #include <AP_Declination/AP_Declination.h>  // ArduPilot Mega Declination Helper Library
 #include <AP_RCMapper/AP_RCMapper.h>        // RC input mapping library
@@ -215,6 +216,7 @@ public:
     friend class ModeGuided;
     friend class ModeLand;
     friend class ModeLoiter;
+    friend class ModeSprint;
     friend class ModePosHold;
     friend class ModeRTL;
     friend class ModeSmartRTL;
@@ -470,6 +472,7 @@ private:
     AC_PosControl *pos_control;
     AC_WPNav *wp_nav;
     AC_Loiter *loiter_nav;
+    AC_Sprint *sprint_nav;
 
 #if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
     AC_CustomControl custom_control{ahrs_view, attitude_control, motors, scheduler.get_loop_period_s()};
@@ -974,6 +977,9 @@ private:
     ModeLand mode_land;
 #if MODE_LOITER_ENABLED == ENABLED
     ModeLoiter mode_loiter;
+#endif
+#if MODE_SPRINT_ENABLED == ENABLED
+    ModeSprint mode_sprint;
 #endif
 #if MODE_POSHOLD_ENABLED == ENABLED
     ModePosHold mode_poshold;
