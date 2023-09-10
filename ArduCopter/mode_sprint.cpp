@@ -137,7 +137,7 @@ void ModeSprint::run()
             target_climb_rate = g.pilot_takeoff_spd;
             // get avoidance adjusted climb rate
             target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
-        } else if (target_climb_rate >= -get_pilot_speed_dn()*0.8) {
+        } else {
             target_climb_rate = 0;
         }
 
