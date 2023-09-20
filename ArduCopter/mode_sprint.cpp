@@ -282,13 +282,13 @@ void ModeSprint::run()
             // call attitude controller
             attitude_control->input_thrust_vector_rate_heading(sprint_nav->get_thrust_vector(), target_yaw_rate);
 
-            if (rng_alt_ok && fc_height_rng < (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) - 20) {
-                // target_climb_rate = MAX(target_climb_rate, MIN(powF(fc_height_rng - g.pilot_takeoff_alt, 2) / (powF(g.pilot_takeoff_alt, 2)), 1) * g.pilot_speed_up);
-                target_climb_rate = MAX(target_climb_rate, MIN((g.pilot_takeoff_alt - fc_height_rng) / (g.pilot_takeoff_alt), 1) * g.pilot_speed_up);
+            if (rng_alt_ok && fc_height_rng < (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) - 10) {
+                target_climb_rate = MAX(target_climb_rate, MIN(powF(fc_height_rng - g.pilot_takeoff_alt, 2) / (powF(g.pilot_takeoff_alt, 2)), 1) * g.pilot_speed_up);
+                // target_climb_rate = MAX(target_climb_rate, MIN((g.pilot_takeoff_alt - fc_height_rng) / (g.pilot_takeoff_alt), 1) * g.pilot_speed_up);
 
             }
             else if (rng_alt_ok && target_climb_rate < 0) {
-                target_climb_rate = MAX(target_climb_rate, MIN(powF((fc_height_rng - (g.pilot_takeoff_alt * 0.85)) / (2 * get_pilot_speed_dn()), 2) + 0.05, 1) * -get_pilot_speed_dn());
+                target_climb_rate = MAX(target_climb_rate, MIN(powF((fc_height_rng - (g.pilot_takeoff_alt - 10)) / (2 * get_pilot_speed_dn()), 2) + 0.05, 1) * -get_pilot_speed_dn());
                 // target_climb_rate_mmps = MAX(target_climb_rate_mmps, MIN((alt_above_ground_mm - takeoff_landing_alt_mm) / (takeoff_landing_alt_mm / 1000), 1000) * -get_pilot_speed_dn());
 
                 if (fc_height_rng <= g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) {
