@@ -272,12 +272,6 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-// Sprint mode - allows vehicle to hold global position
-#ifndef MODE_SPRINT_ENABLED
-# define MODE_SPRINT_ENABLED ENABLED
-#endif
-
-//////////////////////////////////////////////////////////////////////////////
 // Position Hold - enable holding of global position
 #ifndef MODE_POSHOLD_ENABLED
 # define MODE_POSHOLD_ENABLED DISABLED
@@ -298,7 +292,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Sport - fly vehicle in rate-controlled (earth-frame) mode
 #ifndef MODE_SPORT_ENABLED
-# define MODE_SPORT_ENABLED DISABLED
+# define MODE_SPORT_ENABLED ENABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

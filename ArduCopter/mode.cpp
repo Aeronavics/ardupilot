@@ -13,7 +13,7 @@ Mode::Mode(void) :
     g2(copter.g2),
     wp_nav(copter.wp_nav),
     loiter_nav(copter.loiter_nav),
-    sprint_nav(copter.sprint_nav),
+    sport_nav(copter.sport_nav),
     pos_control(copter.pos_control),
     inertial_nav(copter.inertial_nav),
     ahrs(copter.ahrs),
@@ -61,12 +61,6 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
 #if MODE_LOITER_ENABLED == ENABLED
         case Mode::Number::LOITER:
             ret = &mode_loiter;
-            break;
-#endif
-
-#if MODE_SPRINT_ENABLED == ENABLED
-        case Mode::Number::SPRINT:
-            ret = &mode_sprint;
             break;
 #endif
 

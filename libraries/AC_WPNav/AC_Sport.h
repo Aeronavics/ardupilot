@@ -9,12 +9,12 @@
 #include <AC_AttitudeControl/AC_AttitudeControl.h>
 #include <AC_Avoidance/AC_Avoid.h>
 
-class AC_Sprint
+class AC_Sport
 {
 public:
 
     /// Constructor
-    AC_Sprint(const AP_InertialNav& inav, const AP_AHRS_View& ahrs, AC_PosControl& pos_control, const AC_AttitudeControl& attitude_control);
+    AC_Sport(const AP_InertialNav& inav, const AP_AHRS_View& ahrs, AC_PosControl& pos_control, const AC_AttitudeControl& attitude_control);
 
     /// init_target to a position in cm from ekf origin
     void init_target(const Vector2f& position);
@@ -38,16 +38,16 @@ public:
     /// get vector to stopping point based on a horizontal position and velocity
     void get_stopping_point_xy(Vector2f& stopping_point) const;
 
-    /// get horizontal distance to sprint target in cm
+    /// get horizontal distance to sport target in cm
     float get_distance_to_target() const { return _pos_control.get_pos_error_xy_cm(); }
 
     /// get bearing to target in centi-degrees
     int32_t get_bearing_to_target() const { return _pos_control.get_bearing_to_target_cd(); }
 
-    /// get maximum lean angle when using sprint
+    /// get maximum lean angle when using sport
     float get_angle_max_cd() const;
 
-    /// run the sprint controller
+    /// run the sport controller
     void update(bool avoidance_on = true);
 
     /// get desired roll, pitch which should be fed into stabilize controllers
@@ -74,13 +74,13 @@ protected:
 
     // parameters
     AP_Float    _angle_max;             // maximum pilot commanded angle in degrees. Set to zero for 2/3 Angle Max
-    AP_Float    _speed_cms;             // maximum horizontal speed in cm/s while in sprint
-    AP_Float    _accel_cmss;            // sprint's max acceleration in cm/s/s
-    AP_Float    _brake_accel_cmss;      // sprint's acceleration during braking in cm/s/s
+    AP_Float    _speed_cms;             // maximum horizontal speed in cm/s while in sport
+    AP_Float    _accel_cmss;            // sport's max acceleration in cm/s/s
+    AP_Float    _brake_accel_cmss;      // sport's acceleration during braking in cm/s/s
     AP_Float    _brake_jerk_max_cmsss;
-    AP_Float    _brake_delay;           // delay (in seconds) before sprint braking begins after sticks are released
+    AP_Float    _brake_delay;           // delay (in seconds) before sport braking begins after sticks are released
 
-    // sprint controller internal variables
+    // sport controller internal variables
     Vector2f    _desired_accel;         // slewed pilot's desired acceleration in lat/lon frame
     Vector2f    _predicted_accel;
     Vector2f    _predicted_euler_angle;

@@ -1,75 +1,75 @@
 #include <AP_HAL/AP_HAL.h>
-#include "AC_Sprint.h"
+#include "AC_Sport.h"
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 
 extern const AP_HAL::HAL& hal;
 
-#define SPRINT_SPEED_DEFAULT                1250.0f // default sprint speed in cm/s
-#define SPRINT_SPEED_MIN                    20.0f   // minimum sprint speed in cm/s
-#define SPRINT_ACCEL_MAX_DEFAULT            500.0f  // default acceleration in sprint mode
-#define SPRINT_BRAKE_ACCEL_DEFAULT          250.0f  // minimum acceleration in sprint mode
-#define SPRINT_BRAKE_JERK_DEFAULT           500.0f  // maximum jerk in cm/s/s/s in sprint mode
-#define SPRINT_BRAKE_START_DELAY_DEFAULT    1.0f    // delay (in seconds) before sprint braking begins after sticks are released
-#define SPRINT_VEL_CORRECTION_MAX           200.0f  // max speed used to correct position errors in sprint
-#define SPRINT_POS_CORRECTION_MAX           200.0f  // max position error in sprint
-#define SPRINT_ACTIVE_TIMEOUT_MS            200     // sprint controller is considered active if it has been called within the past 200ms (0.2 seconds)
+#define SPORT_SPEED_DEFAULT                1250.0f // default sport speed in cm/s
+#define SPORT_SPEED_MIN                    20.0f   // minimum sport speed in cm/s
+#define SPORT_ACCEL_MAX_DEFAULT            500.0f  // default acceleration in sport mode
+#define SPORT_BRAKE_ACCEL_DEFAULT          250.0f  // minimum acceleration in sport mode
+#define SPORT_BRAKE_JERK_DEFAULT           500.0f  // maximum jerk in cm/s/s/s in sport mode
+#define SPORT_BRAKE_START_DELAY_DEFAULT    1.0f    // delay (in seconds) before sport braking begins after sticks are released
+#define SPORT_VEL_CORRECTION_MAX           200.0f  // max speed used to correct position errors in sport
+#define SPORT_POS_CORRECTION_MAX           200.0f  // max position error in sport
+#define SPORT_ACTIVE_TIMEOUT_MS            200     // sport controller is considered active if it has been called within the past 200ms (0.2 seconds)
 
-const AP_Param::GroupInfo AC_Sprint::var_info[] = {
+const AP_Param::GroupInfo AC_Sport::var_info[] = {
 
     // @Param: ANG_MAX
-    // @DisplayName: Sprint pilot angle max
-    // @Description{Copter, Sub}: Sprint maximum pilot requested lean angle. Set to zero for 2/3 of PSC_ANGLE_MAX/ANGLE_MAX. The maximum vehicle lean angle is still limited by PSC_ANGLE_MAX/ANGLE_MAX
-    // @Description: Sprint maximum pilot requested lean angle. Set to zero for 2/3 of Q_P_ANGLE_MAX/Q_ANGLE_MAX. The maximum vehicle lean angle is still limited by Q_P_ANGLE_MAX/Q_ANGLE_MAX
+    // @DisplayName: Sport pilot angle max
+    // @Description{Copter, Sub}: Sport maximum pilot requested lean angle. Set to zero for 2/3 of PSC_ANGLE_MAX/ANGLE_MAX. The maximum vehicle lean angle is still limited by PSC_ANGLE_MAX/ANGLE_MAX
+    // @Description: Sport maximum pilot requested lean angle. Set to zero for 2/3 of Q_P_ANGLE_MAX/Q_ANGLE_MAX. The maximum vehicle lean angle is still limited by Q_P_ANGLE_MAX/Q_ANGLE_MAX
     // @Units: deg
     // @Range: 0 45
     // @Increment: 1
     // @User: Advanced
-    AP_GROUPINFO("ANG_MAX",  1, AC_Sprint, _angle_max, 0.0f),
+    AP_GROUPINFO("ANG_MAX",  1, AC_Sport, _angle_max, 0.0f),
 
     // @Param: SPEED
-    // @DisplayName: Sprint Horizontal Maximum Speed
-    // @Description: Defines the maximum speed in cm/s which the aircraft will travel horizontally while in sprint mode
+    // @DisplayName: Sport Horizontal Maximum Speed
+    // @Description: Defines the maximum speed in cm/s which the aircraft will travel horizontally while in sport mode
     // @Units: cm/s
     // @Range: 20 3500
     // @Increment: 50
     // @User: Standard
-    AP_GROUPINFO("SPEED", 2, AC_Sprint, _speed_cms, SPRINT_SPEED_DEFAULT),
+    AP_GROUPINFO("SPEED", 2, AC_Sport, _speed_cms, SPORT_SPEED_DEFAULT),
 
     // @Param: ACC_MAX
-    // @DisplayName: Sprint maximum correction acceleration
-    // @Description: Sprint maximum correction acceleration in cm/s/s.  Higher values cause the copter to correct position errors more aggressively.
+    // @DisplayName: Sport maximum correction acceleration
+    // @Description: Sport maximum correction acceleration in cm/s/s.  Higher values cause the copter to correct position errors more aggressively.
     // @Units: cm/s/s
     // @Range: 100 981
     // @Increment: 1
     // @User: Advanced
-    AP_GROUPINFO("ACC_MAX", 3, AC_Sprint, _accel_cmss, SPRINT_ACCEL_MAX_DEFAULT),
+    AP_GROUPINFO("ACC_MAX", 3, AC_Sport, _accel_cmss, SPORT_ACCEL_MAX_DEFAULT),
 
     // @Param: BRK_ACCEL
-    // @DisplayName: Sprint braking acceleration
-    // @Description: Sprint braking acceleration in cm/s/s. Higher values stop the copter more quickly when the stick is centered.
+    // @DisplayName: Sport braking acceleration
+    // @Description: Sport braking acceleration in cm/s/s. Higher values stop the copter more quickly when the stick is centered.
     // @Units: cm/s/s
     // @Range: 25 250
     // @Increment: 1
     // @User: Advanced
-    AP_GROUPINFO("BRK_ACCEL", 4, AC_Sprint, _brake_accel_cmss, SPRINT_BRAKE_ACCEL_DEFAULT),
+    AP_GROUPINFO("BRK_ACCEL", 4, AC_Sport, _brake_accel_cmss, SPORT_BRAKE_ACCEL_DEFAULT),
 
     // @Param: BRK_JERK
-    // @DisplayName: Sprint braking jerk
-    // @Description: Sprint braking jerk in cm/s/s/s. Higher values will remove braking faster if the pilot moves the sticks during a braking maneuver.
+    // @DisplayName: Sport braking jerk
+    // @Description: Sport braking jerk in cm/s/s/s. Higher values will remove braking faster if the pilot moves the sticks during a braking maneuver.
     // @Units: cm/s/s/s
     // @Range: 500 5000
     // @Increment: 1
     // @User: Advanced
-    AP_GROUPINFO("BRK_JERK", 5, AC_Sprint, _brake_jerk_max_cmsss, SPRINT_BRAKE_JERK_DEFAULT),
+    AP_GROUPINFO("BRK_JERK", 5, AC_Sport, _brake_jerk_max_cmsss, SPORT_BRAKE_JERK_DEFAULT),
 
     // @Param: BRK_DELAY
-    // @DisplayName: Sprint brake start delay (in seconds)
-    // @Description: Sprint brake start delay (in seconds)
+    // @DisplayName: Sport brake start delay (in seconds)
+    // @Description: Sport brake start delay (in seconds)
     // @Units: s
     // @Range: 0 2
     // @Increment: 0.1
     // @User: Advanced
-    AP_GROUPINFO("BRK_DELAY",  6, AC_Sprint, _brake_delay, SPRINT_BRAKE_START_DELAY_DEFAULT),
+    AP_GROUPINFO("BRK_DELAY",  6, AC_Sport, _brake_delay, SPORT_BRAKE_START_DELAY_DEFAULT),
 
     AP_GROUPEND
 };
@@ -78,7 +78,7 @@ const AP_Param::GroupInfo AC_Sprint::var_info[] = {
 // Note that the Vector/Matrix constructors already implicitly zero
 // their values.
 //
-AC_Sprint::AC_Sprint(const AP_InertialNav& inav, const AP_AHRS_View& ahrs, AC_PosControl& pos_control, const AC_AttitudeControl& attitude_control) :
+AC_Sport::AC_Sport(const AP_InertialNav& inav, const AP_AHRS_View& ahrs, AC_PosControl& pos_control, const AC_AttitudeControl& attitude_control) :
     _inav(inav),
     _ahrs(ahrs),
     _pos_control(pos_control),
@@ -88,13 +88,13 @@ AC_Sprint::AC_Sprint(const AP_InertialNav& inav, const AP_AHRS_View& ahrs, AC_Po
 }
 
 /// init_target to a position in cm from ekf origin
-void AC_Sprint::init_target(const Vector2f& position)
+void AC_Sport::init_target(const Vector2f& position)
 {
     sanity_check_params();
 
     // initialise position controller speed and acceleration
-    _pos_control.set_correction_speed_accel_xy(SPRINT_VEL_CORRECTION_MAX, _accel_cmss);
-    _pos_control.set_pos_error_max_xy_cm(SPRINT_POS_CORRECTION_MAX);
+    _pos_control.set_correction_speed_accel_xy(SPORT_VEL_CORRECTION_MAX, _accel_cmss);
+    _pos_control.set_pos_error_max_xy_cm(SPORT_POS_CORRECTION_MAX);
 
     // initialise position controller
     _pos_control.init_xy_controller_stopping_point();
@@ -110,13 +110,13 @@ void AC_Sprint::init_target(const Vector2f& position)
 }
 
 /// initialize's position and feed-forward velocity from current pos and velocity
-void AC_Sprint::init_target()
+void AC_Sport::init_target()
 {
     sanity_check_params();
 
     // initialise position controller speed and acceleration
-    _pos_control.set_correction_speed_accel_xy(SPRINT_VEL_CORRECTION_MAX, _accel_cmss);
-    _pos_control.set_pos_error_max_xy_cm(SPRINT_POS_CORRECTION_MAX);
+    _pos_control.set_correction_speed_accel_xy(SPORT_VEL_CORRECTION_MAX, _accel_cmss);
+    _pos_control.set_pos_error_max_xy_cm(SPORT_POS_CORRECTION_MAX);
 
     // initialise position controller and move target accelerations smoothly towards zero
     _pos_control.relax_velocity_controller_xy();
@@ -130,14 +130,14 @@ void AC_Sprint::init_target()
 }
 
 /// reduce response for landing
-void AC_Sprint::soften_for_landing()
+void AC_Sport::soften_for_landing()
 {
     _pos_control.soften_for_landing_xy();
 }
 
 /// set pilot desired acceleration in centi-degrees
 //   dt should be the time (in seconds) since the last call to this function
-void AC_Sprint::set_pilot_desired_acceleration(float euler_roll_angle_cd, float euler_pitch_angle_cd)
+void AC_Sport::set_pilot_desired_acceleration(float euler_roll_angle_cd, float euler_pitch_angle_cd)
 {
     const float dt = _attitude_control.get_dt();
     // Convert from centidegrees on public interface to radians
@@ -169,15 +169,15 @@ void AC_Sprint::set_pilot_desired_acceleration(float euler_roll_angle_cd, float 
 }
 
 /// get vector to stopping point based on a horizontal position and velocity
-void AC_Sprint::get_stopping_point_xy(Vector2f& stopping_point) const
+void AC_Sport::get_stopping_point_xy(Vector2f& stopping_point) const
 {
     Vector2p stop;
     _pos_control.get_stopping_point_xy_cm(stop);
     stopping_point = stop.tofloat();
 }
 
-/// get maximum lean angle when using sprint
-float AC_Sprint::get_angle_max_cd() const
+/// get maximum lean angle when using sport
+float AC_Sport::get_angle_max_cd() const
 {
     if (!is_positive(_angle_max)) {
         return MIN(_attitude_control.lean_angle_max_cd(), _pos_control.get_lean_angle_max_cd()) * (2.0f/3.0f);
@@ -185,33 +185,33 @@ float AC_Sprint::get_angle_max_cd() const
     return MIN(_angle_max*100.0f, _pos_control.get_lean_angle_max_cd());
 }
 
-/// run the sprint controller
-void AC_Sprint::update(bool avoidance_on)
+/// run the sport controller
+void AC_Sport::update(bool avoidance_on)
 {
     calc_desired_velocity(avoidance_on);
     _pos_control.update_xy_controller();
 }
 
 // sanity check parameters
-void AC_Sprint::sanity_check_params()
+void AC_Sport::sanity_check_params()
 {
-    _speed_cms.set(MAX(_speed_cms, SPRINT_SPEED_MIN));
+    _speed_cms.set(MAX(_speed_cms, SPORT_SPEED_MIN));
     _accel_cmss.set(MIN(_accel_cmss, GRAVITY_MSS * 100.0f * tanf(ToRad(_attitude_control.lean_angle_max_cd() * 0.01f))));
 }
 
 /// calc_desired_velocity - updates desired velocity (i.e. feed forward) with pilot requested acceleration and fake wind resistance
 ///		updated velocity sent directly to position controller
-void AC_Sprint::calc_desired_velocity(bool avoidance_on)
+void AC_Sport::calc_desired_velocity(bool avoidance_on)
 {
     float ekfGndSpdLimit, ahrsControlScaleXY;
     AP::ahrs().getControlLimits(ekfGndSpdLimit, ahrsControlScaleXY);
 
     const float dt = _pos_control.get_dt();
 
-    // calculate a sprint speed limit which is the minimum of the value set by the SPRINT_SPEED
+    // calculate a sport speed limit which is the minimum of the value set by the SPORT_SPEED
     // parameter and the value set by the EKF to observe optical flow limits
     float gnd_speed_limit_cms = MIN(_speed_cms, ekfGndSpdLimit * 100.0f);
-    gnd_speed_limit_cms = MAX(gnd_speed_limit_cms, SPRINT_SPEED_MIN);
+    gnd_speed_limit_cms = MAX(gnd_speed_limit_cms, SPORT_SPEED_MIN);
 
     float pilot_acceleration_max = angle_to_accel(get_angle_max_cd() * 0.01) * 100;
 
@@ -220,7 +220,7 @@ void AC_Sprint::calc_desired_velocity(bool avoidance_on)
         return;
     }
 
-    // get sprints desired velocity from the position controller where it is being stored.
+    // get sports desired velocity from the position controller where it is being stored.
     const Vector3f &desired_vel_3d = _pos_control.get_vel_desired_cms();
     Vector2f desired_vel{desired_vel_3d.x,desired_vel_3d.y};
 
@@ -228,7 +228,7 @@ void AC_Sprint::calc_desired_velocity(bool avoidance_on)
     desired_vel.x += _predicted_accel.x * dt;
     desired_vel.y += _predicted_accel.y * dt;
 
-    Vector2f sprint_accel_brake;
+    Vector2f sport_accel_brake;
     float desired_speed = desired_vel.length();
     if (!is_zero(desired_speed)) {
         Vector2f desired_vel_norm = desired_vel / desired_speed;
@@ -237,18 +237,18 @@ void AC_Sprint::calc_desired_velocity(bool avoidance_on)
         float drag_decel = pilot_acceleration_max * desired_speed / gnd_speed_limit_cms;
 
         // calculate a braking acceleration if sticks are at zero
-        float sprint_brake_accel = 0.0f;
+        float sport_brake_accel = 0.0f;
         if (_desired_accel.is_zero()) {
             if ((AP_HAL::millis() - _brake_timer) > _brake_delay * 1000.0f) {
                 float brake_gain = _pos_control.get_vel_xy_pid().kP() * 0.5f;
-                sprint_brake_accel = constrain_float(sqrt_controller(desired_speed, brake_gain, _brake_jerk_max_cmsss, dt), 0.0f, _brake_accel_cmss);
+                sport_brake_accel = constrain_float(sqrt_controller(desired_speed, brake_gain, _brake_jerk_max_cmsss, dt), 0.0f, _brake_accel_cmss);
             }
         } else {
-            sprint_brake_accel = 0.0f;
+            sport_brake_accel = 0.0f;
             _brake_timer = AP_HAL::millis();
         }
-        _brake_accel += constrain_float(sprint_brake_accel - _brake_accel, -_brake_jerk_max_cmsss * dt, _brake_jerk_max_cmsss * dt);
-        sprint_accel_brake = desired_vel_norm * _brake_accel;
+        _brake_accel += constrain_float(sport_brake_accel - _brake_accel, -_brake_jerk_max_cmsss * dt, _brake_jerk_max_cmsss * dt);
+        sport_accel_brake = desired_vel_norm * _brake_accel;
 
         // update the desired velocity using the drag and braking accelerations
         desired_speed = MAX(desired_speed - (drag_decel + _brake_accel) * dt, 0.0f);
@@ -256,7 +256,7 @@ void AC_Sprint::calc_desired_velocity(bool avoidance_on)
     }
 
     // add braking to the desired acceleration
-    _desired_accel -= sprint_accel_brake;
+    _desired_accel -= sport_accel_brake;
 
     // Apply EKF limit to desired velocity -  this limit is calculated by the EKF and adjusted as required to ensure certain sensor limits are respected (eg optical flow sensing)
     float horizSpdDem = desired_vel.length();
@@ -278,7 +278,7 @@ void AC_Sprint::calc_desired_velocity(bool avoidance_on)
     }
 #endif // !APM_BUILD_ArduPlane
 
-    // get sprints desired velocity from the position controller where it is being stored.
+    // get sports desired velocity from the position controller where it is being stored.
     Vector2p target_pos = _pos_control.get_pos_target_cm().xy();
 
     // update the target position using our predicted velocity
