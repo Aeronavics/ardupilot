@@ -23,7 +23,7 @@ public:
         CIRCLE =        7,  // automatic circular flight with automatic throttle
         LAND =          9,  // automatic landing with horizontal position control
         DRIFT =        11,  // semi-autonomous position, yaw and throttle control
-        SPORT =        13,  // manual earth-frame angular rate control with manual throttle
+        SPORT =        13,  // Faster loiter mode
         FLIP =         14,  // automatically flip the vehicle on the roll axis
         AUTOTUNE =     15,  // automatically tune the vehicle's roll and pitch gains
         POSHOLD =      16,  // automatic position hold with manual override, with automatic throttle
@@ -175,6 +175,7 @@ protected:
     ParametersG2 &g2;
     AC_WPNav *&wp_nav;
     AC_Loiter *&loiter_nav;
+    AC_Sport *&sport_nav;
     AC_PosControl *&pos_control;
     AP_InertialNav &inertial_nav;
     AP_AHRS &ahrs;
@@ -1173,6 +1174,7 @@ public:
     Number mode_number() const override { return Number::LOITER; }
 
     bool init(bool ignore_checks) override;
+    void exit() override;
     void run() override;
 
     bool requires_GPS() const override { return true; }
@@ -1181,6 +1183,8 @@ public:
     bool is_autopilot() const override { return false; }
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool allows_autotune() const override { return true; }
+
+    bool is_landing() const override;
 
 #if PRECISION_LANDING == ENABLED
     void set_precision_loiter_enabled(bool value) { _precision_loiter_enabled = value; }
@@ -1206,6 +1210,13 @@ private:
     bool _precision_loiter_enabled;
     bool _precision_loiter_active; // true if user has switched on prec loiter
 #endif
+
+    bool _landing;
+
+    uint32_t _land_start_time;
+    bool _land_pause;
+
+    bool _cancelled_landing;
 
 };
 
@@ -1472,22 +1483,50 @@ public:
     Number mode_number() const override { return Number::SPORT; }
 
     bool init(bool ignore_checks) override;
+    void exit() override;
     void run() override;
 
     bool requires_GPS() const override { return false; }
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(AP_Arming::Method method) const override { return true; };
     bool is_autopilot() const override { return false; }
-    bool has_user_takeoff(bool must_navigate) const override {
-        return !must_navigate;
-    }
+    
+    bool has_user_takeoff(bool must_navigate) const override { return true; }
+    bool allows_autotune() const override { return true; }
+
+    bool is_landing() const override;
+
+#if PRECISION_LANDING == ENABLED
+    void set_precision_sport_enabled(bool value) { _precision_sport_enabled = value; }
+#endif
 
 protected:
 
     const char *name() const override { return "SPORT"; }
     const char *name4() const override { return "SPRT"; }
 
+    uint32_t wp_distance() const override;
+    int32_t wp_bearing() const override;
+    float crosstrack_error() const override { return pos_control->crosstrack_error();}
+
+#if PRECISION_LANDING == ENABLED
+    bool do_precision_sport();
+    void precision_sport_xy();
+#endif
+
 private:
+
+#if PRECISION_LANDING == ENABLED
+    bool _precision_sport_enabled;
+    bool _precision_sport_active; // true if user has switched on prec sport
+#endif
+
+    bool _landing;
+
+    uint32_t _land_start_time;
+    bool _land_pause;
+
+    bool _cancelled_landing;
 
 };
 
@@ -1501,7 +1540,7 @@ public:
 
     virtual void run() override;
 
-    bool requires_GPS() const override { return false; }
+    bool requires_GPS() const override { return true; }
     bool has_manual_throttle() const override { return true; }
     bool allows_arming(AP_Arming::Method method) const override { return true; };
     bool is_autopilot() const override { return false; }

@@ -159,7 +159,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Acro - fly vehicle in acrobatic mode
 #ifndef MODE_ACRO_ENABLED
-# define MODE_ACRO_ENABLED ENABLED
+# define MODE_ACRO_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -171,7 +171,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Brake mode - bring vehicle to stop
 #ifndef MODE_BRAKE_ENABLED
-# define MODE_BRAKE_ENABLED ENABLED
+# define MODE_BRAKE_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -183,13 +183,13 @@
 //////////////////////////////////////////////////////////////////////////////
 // Drift - fly vehicle in altitude-held, coordinated-turn mode
 #ifndef MODE_DRIFT_ENABLED
-# define MODE_DRIFT_ENABLED ENABLED
+# define MODE_DRIFT_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // flip - fly vehicle in flip in pitch and roll direction mode
 #ifndef MODE_FLIP_ENABLED
-# define MODE_FLIP_ENABLED ENABLED
+# define MODE_FLIP_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -219,7 +219,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Position Hold - enable holding of global position
 #ifndef MODE_POSHOLD_ENABLED
-# define MODE_POSHOLD_ENABLED ENABLED
+# define MODE_POSHOLD_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -237,31 +237,31 @@
 //////////////////////////////////////////////////////////////////////////////
 // Sport - fly vehicle in rate-controlled (earth-frame) mode
 #ifndef MODE_SPORT_ENABLED
-# define MODE_SPORT_ENABLED DISABLED
+# define MODE_SPORT_ENABLED ENABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // System ID - conduct system identification tests on vehicle
 #ifndef MODE_SYSTEMID_ENABLED
-# define MODE_SYSTEMID_ENABLED !HAL_MINIMIZE_FEATURES
+# define MODE_SYSTEMID_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // Throw - fly vehicle after throwing it in the air
 #ifndef MODE_THROW_ENABLED
-# define MODE_THROW_ENABLED ENABLED
+# define MODE_THROW_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // ZigZag - allow vehicle to fly in a zigzag manner with predefined point A B
 #ifndef MODE_ZIGZAG_ENABLED
-# define MODE_ZIGZAG_ENABLED !HAL_MINIMIZE_FEATURES
+# define MODE_ZIGZAG_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
 // Turtle - allow vehicle to be flipped over after a crash
 #ifndef MODE_TURTLE_ENABLED
-# define MODE_TURTLE_ENABLED !HAL_MINIMIZE_FEATURES && !defined(DISABLE_DSHOT) && FRAME_CONFIG != HELI_FRAME
+# define MODE_TURTLE_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
