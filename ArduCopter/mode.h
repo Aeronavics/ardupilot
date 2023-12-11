@@ -1215,7 +1215,7 @@ private:
 
     uint32_t _land_start_time;
     bool _land_pause;
-
+    bool _message_sent;
     bool _cancelled_landing;
 
 };
@@ -1486,11 +1486,10 @@ public:
     void exit() override;
     void run() override;
 
-    bool requires_GPS() const override { return false; }
+    bool requires_GPS() const override { return true; }
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(AP_Arming::Method method) const override { return true; };
     bool is_autopilot() const override { return false; }
-    
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool allows_autotune() const override { return true; }
 
@@ -1525,7 +1524,7 @@ private:
 
     uint32_t _land_start_time;
     bool _land_pause;
-
+    bool _message_sent;
     bool _cancelled_landing;
 
 };

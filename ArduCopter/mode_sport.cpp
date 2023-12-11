@@ -202,6 +202,7 @@ void ModeSport::run()
                     _land_start_time = millis();
                     _land_pause = true;
                     _landing = true;
+                    _message_sent = false;
                 }
 
                 // pause before beginning land descent
@@ -210,7 +211,17 @@ void ModeSport::run()
                 }
 
                 // cancel landing if throttle is not at minimum and the landing descent has not yet started
-                if (_land_pause && (target_climb_rate > -get_pilot_speed_dn()*0.99 || target_yaw_rate < -500 || target_yaw_rate > 500 || copter.gps.ground_speed_cm() >= 50)) {
+                if (
+                    _land_pause && (
+                        target_climb_rate > -get_pilot_speed_dn()*0.99 || 
+                        channel_yaw->norm_input_dz() > 0.1 || 
+                        channel_yaw->norm_input_dz() < -0.1 || 
+                        channel_pitch->norm_input_dz() > 0.1 || 
+                        channel_pitch->norm_input_dz() < -0.1 || 
+                        channel_roll->norm_input_dz() > 0.1 || 
+                        channel_roll->norm_input_dz() < -0.1
+                        )
+                    ) {
                     cancel_landing = true;
                 }
 
@@ -248,6 +259,10 @@ void ModeSport::run()
                 }
 
                 if (_landing) {
+                    if (!_land_pause && !_message_sent && !cancel_landing){
+                        gcs().send_text(MAV_SEVERITY_INFO,"Landing Started");
+                        _message_sent = true;
+                    }
                     auto_yaw.set_mode(AutoYaw::Mode::HOLD);
                     land_run_horizontal_control();
                     land_run_vertical_control(_land_pause);
@@ -255,6 +270,9 @@ void ModeSport::run()
                         _landing = false;
                         if (!_land_pause) {
                             _cancelled_landing = true;
+                            if (_message_sent){
+                                gcs().send_text(MAV_SEVERITY_INFO,"Landing Cancelled");
+                            }
                         }
                     }
                 }
