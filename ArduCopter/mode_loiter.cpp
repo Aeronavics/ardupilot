@@ -260,7 +260,7 @@ void ModeLoiter::run()
 
                 if (_landing) {
                     if (!_land_pause && !_message_sent && !cancel_landing){
-                        gcs().send_text(MAV_SEVERITY_INFO,"Landing Initialised");
+                        gcs().send_text(MAV_SEVERITY_ALERT,"Landing Initiated");
                         _message_sent = true;
                     }
                     auto_yaw.set_mode(AutoYaw::Mode::HOLD);
@@ -271,7 +271,7 @@ void ModeLoiter::run()
                         if (!_land_pause) {
                             _cancelled_landing = true;
                             if (_message_sent){
-                                gcs().send_text(MAV_SEVERITY_INFO,"Landing Cancelled");
+                                gcs().send_text(MAV_SEVERITY_ALERT,"Landing Cancelled");
                             }
                         }
                     }
