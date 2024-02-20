@@ -260,7 +260,7 @@ void ModeSport::run()
 
                 if (_landing) {
                     if (!_land_pause && !_message_sent && !cancel_landing){
-                        gcs().send_text(MAV_SEVERITY_INFO,"Landing Started");
+                        gcs().send_text(MAV_SEVERITY_INFO,"Landing Initialised");
                         _message_sent = true;
                     }
                     auto_yaw.set_mode(AutoYaw::Mode::HOLD);
