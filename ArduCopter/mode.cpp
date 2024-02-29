@@ -282,6 +282,13 @@ bool Copter::set_mode(Mode::Number mode, ModeReason reason)
         return false;
     }
 
+    if (!ignore_checks &&
+        new_flightmode->requires_RNGFNDR() &&
+        !copter.rangefinder_alt_ok()) {
+        mode_change_failed(new_flightmode, "requires rangefinder");
+        return false;
+    }
+
     // check for valid altitude if old mode did not require it but new one does
     // we only want to stop changing modes if it could make things worse
     if (!ignore_checks &&

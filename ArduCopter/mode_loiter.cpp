@@ -179,6 +179,10 @@ void ModeLoiter::run()
 
             bool rng_alt_ok = copter.rangefinder_alt_ok();
 
+            if (!rng_alt_ok) {
+                copter.set_mode(Mode::Number::RTL, ModeReason::BAD_DEPTH);
+            }
+
             Matrix3f rngRotMatrix = {
                 Vector3f{copter.ahrs.cos_pitch(),   copter.ahrs.sin_pitch() * copter.ahrs.sin_roll(),   copter.ahrs.sin_pitch() * copter.ahrs.cos_roll()}, 
                 Vector3f{0,                         copter.ahrs.cos_roll(),                             -copter.ahrs.sin_roll()},
@@ -189,7 +193,6 @@ void ModeLoiter::run()
 
             if (
                 !_cancelled_landing && (_landing || (
-                    rng_alt_ok && 
                     fc_height_rng <= (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270)) + 10) && 
                     target_climb_rate <= -get_pilot_speed_dn()*0.99 && 
                     copter.gps.ground_speed_cm() <= 50
@@ -281,7 +284,7 @@ void ModeLoiter::run()
             else 
             {
                 if (_cancelled_landing){
-                    if (rng_alt_ok && fc_height_rng < (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) + 10) {
+                    if (fc_height_rng < (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) + 10) {
                         loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
 #if PRECISION_LANDING == ENABLED
                         bool precision_loiter_old_state = _precision_loiter_active;
@@ -351,12 +354,12 @@ void ModeLoiter::run()
                 // call attitude controller
                 attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate);
 
-                if (rng_alt_ok && fc_height_rng < (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) - 10) {
+                if (fc_height_rng < (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) - 10) {
                     target_climb_rate = MAX(target_climb_rate, MIN(powF(fc_height_rng - g.pilot_takeoff_alt, 2) / (powF(g.pilot_takeoff_alt, 2)), 1) * g.pilot_speed_up);
                     // target_climb_rate = MAX(target_climb_rate, MIN((g.pilot_takeoff_alt - fc_height_rng) / (g.pilot_takeoff_alt), 1) * g.pilot_speed_up);
 
                 }
-                else if (rng_alt_ok && target_climb_rate < 0) {
+                else if (target_climb_rate < 0) {
                     if (g.pilot_takeoff_alt > 0.0f){
                         target_climb_rate = MAX(target_climb_rate, MIN(powF((fc_height_rng - (g.pilot_takeoff_alt - 10)) / (2 * get_pilot_speed_dn()), 2) + 0.05, 1) * -get_pilot_speed_dn());
                         // target_climb_rate_mmps = MAX(target_climb_rate_mmps, MIN((alt_above_ground_mm - takeoff_landing_alt_mm) / (takeoff_landing_alt_mm / 1000), 1000) * -get_pilot_speed_dn());
