@@ -407,6 +407,17 @@ bool AP_Arming_Copter::rangefinder_checks(bool display_failure)
             AP_Notify::flags.pre_arm_check = false;
             return false;
         }
+        if (!copter.rangefinder_state.enabled){
+            AP_Notify::flags.pre_arm_check = false;
+            AP_Arming::check_failed(ARMING_CHECK_RANGEFINDER, display_failure, "No Rangefinder configured");
+            return false;
+        }
+        if (!copter.rangefinder_state.alt_healthy){
+            AP_Notify::flags.pre_arm_check = false;
+            AP_Arming::check_failed(ARMING_CHECK_RANGEFINDER, display_failure, "Rangefinder not healthy");
+            return false;
+
+        }
     }
 
     // return true if GPS is not required
@@ -422,7 +433,7 @@ bool AP_Arming_Copter::rangefinder_checks(bool display_failure)
     }
 
     // if we got here all must be ok
-    AP_Notify::flags.pre_arm_gps_check = true;
+    AP_Notify::flags.pre_arm_check = true;
     return true;
 }
 
