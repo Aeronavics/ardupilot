@@ -325,6 +325,12 @@ void ModeSport::run()
                         _cancelled_landing = false;
                     }
                 }
+
+                if (copter.rangefinder_state.alt_cm_glitch_protected < copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))
+                {
+                    copter.set_mode(Mode::Number::RTL, ModeReason::BAD_DEPTH);
+                }
+                
                 // convert pilot input to lean angles
                 get_pilot_desired_lean_angles(target_roll, target_pitch, sport_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
 
