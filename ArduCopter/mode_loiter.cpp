@@ -285,7 +285,7 @@ void ModeLoiter::run()
                 if (_cancelled_landing){
                     if (fc_height_rng < (g.pilot_takeoff_alt + (copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))) + 10) {
                         loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
                         bool precision_loiter_old_state = _precision_loiter_active;
                         if (do_precision_loiter()) {
                             precision_loiter_xy();
@@ -329,14 +329,14 @@ void ModeLoiter::run()
                 {
                     copter.set_mode(Mode::Number::RTL, ModeReason::BAD_DEPTH);
                 }
-                
+
                 // convert pilot input to lean angles
                 get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
 
                 // process pilot's roll and pitch input
                 loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
                 bool precision_loiter_old_state = _precision_loiter_active;
                 if (do_precision_loiter()) {
                     precision_loiter_xy();

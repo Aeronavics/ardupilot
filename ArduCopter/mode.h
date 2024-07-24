@@ -1560,7 +1560,7 @@ public:
 
     bool is_landing() const override;
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
     void set_precision_sport_enabled(bool value) { _precision_sport_enabled = value; }
 #endif
 
@@ -1573,14 +1573,14 @@ protected:
     int32_t wp_bearing() const override;
     float crosstrack_error() const override { return pos_control->crosstrack_error();}
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
     bool do_precision_sport();
     void precision_sport_xy();
 #endif
 
 private:
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
     bool _precision_sport_enabled;
     bool _precision_sport_active; // true if user has switched on prec sport
 #endif
