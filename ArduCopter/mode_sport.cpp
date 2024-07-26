@@ -327,6 +327,7 @@ void ModeSport::run()
                 if (copter.rangefinder_state.alt_cm_glitch_protected < copter.rangefinder.ground_clearance_cm_orient(ROTATION_PITCH_270))
                 {
                     copter.set_mode(Mode::Number::RTL, ModeReason::BAD_DEPTH);
+                    gcs().send_text(MAV_SEVERITY_ALERT,"Rangefinder Occluded: Returning to Home");
                 }
 
                 // convert pilot input to lean angles
