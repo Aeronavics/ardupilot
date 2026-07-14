@@ -301,7 +301,7 @@ void AC_SpotSprayer::update()
         }
 
         if (_reported_weight > (float) _useful_load) {
-            gcs().send_text(MAV_SEVERITY_WARNING, "Overweight by %fkg", _reported_weight - (float) _useful_load);
+            gcs().send_text(MAV_SEVERITY_WARNING, "Overweight by %.2fkg", _reported_weight - (float) _useful_load);
             _last_fault_msg_ms = now;
         }
 
