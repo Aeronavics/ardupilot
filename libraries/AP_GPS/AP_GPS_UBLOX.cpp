@@ -239,6 +239,19 @@ const AP_GPS_UBLOX::config_list AP_GPS_UBLOX::config_MB_Rover_uart2[] {
 #endif // GPS_MOVING_BASELINE
 
 /*
+  config changes for F9
+  Turning on Antenna
+ */
+const AP_GPS_UBLOX::config_list AP_GPS_UBLOX::config_F9_HW[] {
+ { ConfigKey::CFG_HW_ANT_VOLTCTRL, 1},
+ { ConfigKey::CFG_HW_ANT_SHORTDET, 1},
+ { ConfigKey::CFG_HW_ANT_OPENDET, 1},
+ { ConfigKey::CFG_HW_ANT_PWRDOWN, 1},
+ { ConfigKey::CFG_HW_ANT_RECOVER, 1},
+};
+
+
+/*
   config changes for M10
   we need to use B1C not B1 signal for Beidou on M10 to allow solid 5Hz,
   and also disable Glonass and enable QZSS
@@ -490,6 +503,18 @@ AP_GPS_UBLOX::_request_next_config(void)
                 if (!_configure_config_set(config_GNSS, cfg_count, CONFIG_F9, UBX_VALSET_LAYER_RAM | UBX_VALSET_LAYER_BBR)) {
                     _next_message--;
                 }
+            }
+        }
+        break;
+    }
+    case STEP_F9_HW_CONFIG: {
+        if (_hardware_generation == UBLOX_F9)
+        {
+            const config_list *list = config_F9_HW;
+            const uint8_t list_length = ARRAY_SIZE(config_F9_HW);
+            Debug("Sending F9 HW settings");
+            if (!_configure_config_set(list, list_length, CONFIG_F9_HW, UBX_VALSET_LAYER_ALL)) {
+                _next_message--;
             }
         }
         break;
@@ -2193,6 +2218,7 @@ static const char *reasons[] = {"navigation rate",
                                 "TIM TM2",
                                 "F9",
                                 "M10",
+                                "CONFIG_F9_HW",
                                 "L5 Enable Disable"};
 
 static_assert((1 << ARRAY_SIZE(reasons)) == CONFIG_LAST, "UBLOX: Missing configuration description");

@@ -104,7 +104,8 @@
 #define CONFIG_F9            (1<<19)
 #define CONFIG_M10           (1<<20)
 #define CONFIG_L5            (1<<21)
-#define CONFIG_LAST          (1<<22) // this must always be the last bit
+#define CONFIG_F9_HW         (1<<22)
+#define CONFIG_LAST          (1<<23) // this must always be the last bit
 
 #define CONFIG_REQUIRED_INITIAL (CONFIG_RATE_NAV | CONFIG_RATE_POSLLH | CONFIG_RATE_STATUS | CONFIG_RATE_VELNED)
 
@@ -327,6 +328,13 @@ private:
 
         // other keys
         CFG_NAVSPG_DYNMODEL             = 0x20110021,
+
+        // F9 HW Config
+        CFG_HW_ANT_VOLTCTRL             = 0x10A3002E,
+        CFG_HW_ANT_SHORTDET             = 0x10A3002F,
+        CFG_HW_ANT_OPENDET              = 0x10A30031,
+        CFG_HW_ANT_PWRDOWN              = 0x10A30033,
+        CFG_HW_ANT_RECOVER              = 0x10A30035,
 
     };
 
@@ -753,6 +761,7 @@ private:
         STEP_TIM_TM2,
         STEP_F9,
         STEP_F9_VALIDATE,
+        STEP_F9_HW_CONFIG,
         STEP_M10,
         STEP_L5,
         STEP_LAST
@@ -903,6 +912,7 @@ private:
 #endif // GPS_MOVING_BASELINE
 
     bool supports_l5;
+    static const config_list config_F9_HW[];
     static const config_list config_M10[];
     static const config_list config_L5_ovrd_ena[];
     static const config_list config_L5_ovrd_dis[];
