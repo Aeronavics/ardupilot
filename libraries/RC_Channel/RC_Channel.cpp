@@ -1397,6 +1397,24 @@ void RC_Channel::do_aux_function_spot_sprayer_pulse(const AuxSwitchPos ch_flag)
     }
 }
 
+
+void RC_Channel::do_aux_function_tag_location(const AuxSwitchPos ch_flag)
+{
+    AC_SpotSprayer *sprayer = AP::spot_sprayer();
+    if (sprayer == nullptr){
+        return;
+    }
+    if (ch_flag == AuxSwitchPos::LOW && !_tag_reset)
+    {
+        _tag_reset = true;
+    }
+    else if (ch_flag == AuxSwitchPos::HIGH && _tag_reset)
+    {
+        _tag_reset = false;
+        sprayer->tag_location();
+    }
+}
+
 #endif // HAL_SPOT_SPRAYER_ENABLED
 
 #if AP_GRIPPER_ENABLED
@@ -1652,6 +1670,10 @@ bool RC_Channel::do_aux_function(const AUX_FUNC ch_option, const AuxSwitchPos ch
 
     case AUX_FUNC::SPOT_SPRAYER_PULSE:
         do_aux_function_spot_sprayer_pulse(ch_flag);
+        break;
+
+    case AUX_FUNC::TAG_LOCATION:
+        do_aux_function_tag_location(ch_flag);
         break;
 #endif
 

@@ -22,6 +22,7 @@
 #include <inttypes.h>
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
+#include <AP_Common/Location.h>
 
 #define AC_SPRAYER_DEFAULT_FLOW_RATE_LOW    60
 #define AC_SPRAYER_DEFAULT_FLOW_RATE_MID    90
@@ -80,6 +81,7 @@ public:
     void queue_volume();
     void reset_volume();
     uint16_t volume_queued();
+    void tag_location();
 
     uint8_t get_mode() const { return (uint8_t) _mode; }
 
@@ -95,6 +97,7 @@ public:
     static const struct AP_Param::GroupInfo var_info[];
 
     void send_spray_status(const mavlink_channel_t channel);
+    void send_tagged_location(const mavlink_channel_t channel);
 
 protected:
 
@@ -116,10 +119,6 @@ private:
     bool _spraying;
     OPTION _option;
 
-    // internal variables
-    uint32_t        _speed_over_min_time;   ///< time at which we reached speed minimum
-    uint32_t        _speed_under_min_time;  ///< time at which we fell below speed minimum
-
     uint32_t    last_reading_ms;
     uint16_t    measured_flow_rate;
     uint16_t    measured_pressure;
@@ -136,6 +135,8 @@ private:
     float       _reported_weight;
 
     uint16_t    _volume_to_log;
+
+    Location    current_location;
 
     HAL_Semaphore _sem;
 

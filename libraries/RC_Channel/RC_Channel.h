@@ -301,9 +301,10 @@ public:
         SPOT_SPRAYER =              310, // Run spot sprayer
         SPOT_SPRAYER_OPTION =       311, // Set spot sprayer desired flow rate/volume
         SPOT_SPRAYER_PULSE =        312, // Run spot sprayer pulse
+        TAG_LOCATION =              313, // Tag a location
 
         // this must be higher than any aux function above
-        AUX_FUNCTION_MAX =   313,
+        AUX_FUNCTION_MAX =   314,
     };
 
     // auxiliary switch handling (n.b.: we store this as 2-bits!):
@@ -384,6 +385,7 @@ protected:
     void do_aux_function_spot_sprayer(const AuxSwitchPos ch_flag);
     void do_aux_function_spot_sprayer_option(const AuxSwitchPos ch_flag);
     void do_aux_function_spot_sprayer_pulse(const AuxSwitchPos ch_flag);
+    void do_aux_function_tag_location(const AuxSwitchPos ch_flag);
     void do_aux_function_generator(const AuxSwitchPos ch_flag);
     void do_aux_function_fft_notch_tune(const AuxSwitchPos ch_flag);
     void do_aux_function_retract_mount(const AuxSwitchPos ch_flag, const uint8_t instance);
@@ -419,6 +421,7 @@ private:
 
     bool _spray_pulse_reset = false;
     bool _spray_volume_reset = false;
+    bool _tag_reset = false;
 
     // overrides
     uint16_t override_value;

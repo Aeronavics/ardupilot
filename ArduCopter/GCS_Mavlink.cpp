@@ -383,6 +383,14 @@ bool GCS_MAVLINK_Copter::try_send_message(enum ap_message id)
         }
         break;
     }
+    case MSG_TAG_LOCATION:
+    {
+        if (copter.spot_sprayer.enabled())
+        {
+            copter.spot_sprayer.send_tagged_location(chan);
+        }
+        break;
+    }
 
     default:
         return GCS_MAVLINK::try_send_message(id);

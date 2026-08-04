@@ -32,6 +32,7 @@ protected:
     void send_attitude_target() override;
     void send_position_target_global_int() override;
     void send_position_target_local_ned() override;
+    void send_tagged_location(Location location);
 
     MAV_RESULT handle_command_do_set_roi(const Location &roi_loc) override;
     MAV_RESULT handle_preflight_reboot(const mavlink_command_int_t &packet, const mavlink_message_t &msg) override;

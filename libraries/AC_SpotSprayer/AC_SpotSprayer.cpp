@@ -7,6 +7,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <GCS_MAVLink/GCS.h>
+#include <AP_Vehicle/AP_Vehicle.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -271,6 +272,38 @@ uint16_t AC_SpotSprayer::volume_queued()
         reset_volume();
     }
     return volume_to_send;
+}
+
+void AC_SpotSprayer::tag_location()
+{
+    AP::ahrs().get_location(current_location);
+
+    // send mavlink to RC
+    gcs().send_message(MSG_TAG_LOCATION);
+
+}
+
+void AC_SpotSprayer::send_tagged_location(const mavlink_channel_t channel)
+{
+    mavlink_msg_anv_tag_location_send(
+        channel,
+        current_location.lat,
+        current_location.lng
+    );
+
+
+    // Log location
+    WITH_SEMAPHORE(_sem);
+    AP::logger().WriteStreaming(
+        "TAG",
+        "TimeUS,Lat,Lon",
+        "sDU",
+        "FGG",
+        "QLL",
+        AP_HAL::micros64(),
+        current_location.lat,
+        current_location.lng
+    );
 }
 
 uint16_t AC_SpotSprayer::get_pressure()
