@@ -35,9 +35,15 @@ pipeline {
 
     environment {
         // Tagged per branch so branches of the multibranch job never clobber each other.
+        BRANCH_SLUG  = "${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9_.-]', '-')}"
         IMAGE_TAG    = "ardupilot-build:${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9_.-]', '-').toLowerCase()}"
         CONTAINER_WS = '/ardupilot'
         BOARD        = 'CubeOrangePlus'
+        // Nexus coordinates for the published firmware.
+        NEXUS_URL        = 'nexus.aeronavics.com'
+        NEXUS_REPO       = 'release_library'
+        NEXUS_GROUP      = 'arducopter'
+        NEXUS_CREDS      = 'JenkinsAdmin'
         // ccache lives in the per-branch @tmp dir: it survives workspace cleaning and is
         // owned by the Jenkins user (a docker named volume would be created root owned).
         CCACHE_HOST_DIR = "${env.WORKSPACE_TMP ?: env.WORKSPACE + '@tmp'}/ccache"
@@ -61,8 +67,24 @@ pipeline {
                     env.GIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.HOST_UID  = sh(script: 'id -u', returnStdout: true).trim()
                     env.HOST_GID  = sh(script: 'id -g', returnStdout: true).trim()
+
+                    // Version for Nexus comes from the branch name, e.g.
+                    // "ANVCopter-4.6.3" -> "4.6.3". Done with grep rather than a
+                    // Groovy "=~" because java.util.regex.Matcher is not
+                    // CPS-serialisable and needs script approval in the sandbox.
+                    env.FW_VERSION = sh(
+                        script: 'echo "${BRANCH_NAME}" | grep -oE "[0-9]+\\.[0-9]+(\\.[0-9]+)*" | head -n1 || true',
+                        returnStdout: true).trim()
                 }
                 echo "Building ${env.BRANCH_NAME} @ ${env.GIT_SHORT}"
+                script {
+                    if (env.FW_VERSION) {
+                        echo "Firmware version parsed from branch name: ${env.FW_VERSION}"
+                    } else {
+                        echo "No version number in branch name '${env.BRANCH_NAME}' - " +
+                             'the build will run but nothing will be published to Nexus.'
+                    }
+                }
             }
         }
 
@@ -103,14 +125,44 @@ pipeline {
 
         stage('Collect firmware') {
             steps {
+                script {
+                    // Workspace relative path, reused verbatim by the Nexus upload.
+                    env.APJ_FILE = "artifacts/${env.BOARD}-${env.BRANCH_SLUG}-${env.GIT_SHORT}-arducopter.apj"
+                }
                 sh '''
                     set -eux
                     rm -rf artifacts && mkdir -p artifacts
-                    cp -a "build/${BOARD}/bin/arducopter.apj" \
-                          "artifacts/${BOARD}-${BRANCH_NAME##*/}-${GIT_SHORT}-arducopter.apj"
+                    cp -a "build/${BOARD}/bin/arducopter.apj" "${APJ_FILE}"
                     ls -l artifacts
                 '''
                 archiveArtifacts artifacts: 'artifacts/*.apj', fingerprint: true
+            }
+        }
+
+        stage('Publish to Nexus') {
+            when {
+                // Feature branches without a version in their name still build and
+                // archive, they just do not publish.
+                expression { return env.FW_VERSION != null && env.FW_VERSION != '' }
+            }
+            steps {
+                nexusArtifactUploader(
+                    nexusVersion: 'nexus3',
+                    protocol: 'https',
+                    nexusUrl: env.NEXUS_URL,          // host only, no scheme
+                    repository: env.NEXUS_REPO,
+                    credentialsId: env.NEXUS_CREDS,
+                    groupId: env.NEXUS_GROUP,
+                    version: env.FW_VERSION,
+                    artifacts: [
+                        [artifactId: env.BOARD,
+                         classifier: 'arducopter',
+                         type: 'apj',
+                         file: env.APJ_FILE]
+                    ]
+                )
+                echo "Uploaded ${env.APJ_FILE} to ${env.NEXUS_URL}/${env.NEXUS_REPO} " +
+                     "as ${env.NEXUS_GROUP}:${env.BOARD}:${env.FW_VERSION}:arducopter:apj"
             }
         }
     }
