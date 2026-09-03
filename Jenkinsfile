@@ -46,25 +46,17 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // scm from the multibranch job, plus recursive submodules
-                // (ChibiOS, mavlink, waf, DroneCAN, ...).
-                checkout([
-                    $class: 'GitSCM',
-                    branches: scm.branches,
-                    userRemoteConfigs: scm.userRemoteConfigs,
-                    browser: scm.browser,
-                    extensions: scm.extensions + [
-                        [$class: 'SubmoduleOption',
-                         disableSubmodules: false,
-                         recursiveSubmodules: true,
-                         parentCredentials: true,
-                         trackingSubmodules: false,
-                         shallow: false,
-                         timeout: 30],
-                        [$class: 'CloneOption', noTags: false, shallow: false, timeout: 30]
-                    ]
-                ])
-                sh 'git submodule sync --recursive && git submodule update --init --recursive'
+                // Plain "checkout scm" only: reading scm.branches / scm.extensions /
+                // scm.browser to inject a SubmoduleOption trips the Groovy sandbox
+                // ("Scripts not permitted to use method hudson.scm.SCM getBrowser").
+                // The submodules are pulled in below instead -- every URL in
+                // .gitmodules is public https, so no Jenkins credentials are needed.
+                checkout scm
+                sh '''
+                    set -eux
+                    git submodule sync --recursive
+                    git submodule update --init --recursive
+                '''
                 script {
                     env.GIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.HOST_UID  = sh(script: 'id -u', returnStdout: true).trim()
