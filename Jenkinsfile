@@ -44,6 +44,8 @@ pipeline {
         NEXUS_REPO       = 'release_library'
         NEXUS_GROUP      = 'arducopter'
         NEXUS_CREDS      = 'JenkinsAdmin'
+        // Shared release library on the build agent (note the space in the path).
+        RELEASE_LIB_DIR  = '/home/releaseLibrary/AC-16/Flight Controller'
         // ccache lives in the per-branch @tmp dir: it survives workspace cleaning and is
         // owned by the Jenkins user (a docker named volume would be created root owned).
         CCACHE_HOST_DIR = "${env.WORKSPACE_TMP ?: env.WORKSPACE + '@tmp'}/ccache"
@@ -163,6 +165,30 @@ pipeline {
                 )
                 echo "Uploaded ${env.APJ_FILE} to ${env.NEXUS_URL}/${env.NEXUS_REPO} " +
                      "as ${env.NEXUS_GROUP}:${env.BOARD}:${env.FW_VERSION}:arducopter:apj"
+            }
+        }
+
+        stage('Copy to release library') {
+            when {
+                expression { return env.FW_VERSION != null && env.FW_VERSION != '' }
+            }
+            steps {
+                sh '''
+                    set -eu
+                    dest="${RELEASE_LIB_DIR}/arducopter-${FW_VERSION}.apj"
+
+                    # Deliberately not "mkdir -p": the release library is a shared
+                    # location, and silently creating it would scatter releases across
+                    # agents that happen not to have it mounted.
+                    if [ ! -d "${RELEASE_LIB_DIR}" ]; then
+                        echo "Release library '${RELEASE_LIB_DIR}' not present on $(hostname)." >&2
+                        echo "Is this the right agent, and is the share mounted?" >&2
+                        exit 1
+                    fi
+
+                    cp -f "${APJ_FILE}" "$dest"
+                    ls -l "$dest"
+                '''
             }
         }
     }
